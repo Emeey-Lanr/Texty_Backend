@@ -1,0 +1,29 @@
+{
+  "name": "groupie",
+  "version": "1.0.0",
+  "description": "An api for a groupie, a web application that help in creating private public group, chat with friends",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "nodemon dist/index.js",
+    "dev": "tsc -w & nodemon dist/index.js"
+  },
+  "author": "Oyelowo Emmanuel Oluwadara",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^4.17.17",
+    "@types/node": "^18.15.11",
+    "@types/socket.io": "^3.0.2",
+    "bcrypt": "^5.1.0",
+    "cloudinary": "^1.36.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.10.0",
+    "socket.io": "^4.6.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.4"
+  }
+}
