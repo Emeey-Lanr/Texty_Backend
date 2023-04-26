@@ -10,4 +10,5 @@ const userController_1 = require("../UserController/userController");
 exports.route.post("/signup", userController_1.signup);
 exports.route.post("/signin", userController_1.signin);
 exports.route.get("/verifyUserProfile", userController_1.verifyUserProfile);
+exports.route.post("/followUser", userController_1.followerUser);
 // export route

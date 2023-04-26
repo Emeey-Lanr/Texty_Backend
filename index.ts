@@ -28,7 +28,7 @@ const PORT = process.env.PORT
 
 
 
- const io = new Server (httpServer, {cors: {origin:"*"}});
+const io = new Server (httpServer, {cors: {origin:"*"}});
 
 io.on("connection", (socket:Socket) => {
     socket.emit("hello", { id: socket.id })

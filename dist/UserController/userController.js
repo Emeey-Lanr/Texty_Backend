@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const brcypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
+    const { username, password, img_url, about_me, post, following, followers, notification, state } = req.body;
     try {
         //    Find if user exist
         const findUser = yield db_1.pool.query("SELECT username FROM user_info WHERE username = $1", [username]);
@@ -25,7 +25,8 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             //hash the user password
             const hashedPasword = yield brcypt.hash(password, 10);
             //  user db insertion
-            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password) VALUES($1, $2)", [username, hashedPasword]);
+            const registeringUserData = [username, hashedPasword, img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state];
+            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)", registeringUserData);
             //  token creation
             const userToken = yield jwt.sign({ userId: username }, process.env.TKN, { expiresIn: "7d" });
             res.send({ status: true, client_Token: userToken, username: username });
@@ -62,59 +63,148 @@ const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.signin = signin;
+const userDataObject = {
+    username: "",
+    img_url: "",
+    about_me: "",
+    post: [],
+    following: [],
+    followers: [],
+    notification: [],
+    state: ""
+};
 const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const message = (userData, status, loggedIn, currentUser, noUserFound, lookedForUser, id, message) => {
+    const message = (userData, followingFollowersUser, status, loggedIn, currentUser, noUserFound, lookedForUser, followingFollowersLookedFor, id, message) => __awaiter(void 0, void 0, void 0, function* () {
         switch (id) {
             case 11:
-                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
+                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message });
             case 12:
-                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
+                return res.send({ userData: userData, followingFollowersLookedFor, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
             case 13:
-                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message: message });
+                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message });
             case 2:
-                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser, lookedForUser: lookedForUser, message: message });
+                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message });
             case 0:
                 return res.send({ bothUnavailable: noUserFound, status: status, loggedIn: loggedIn, message: message });
             default:
                 return res.send({ noUserFound: noUserFound, message: message });
         }
-    };
+    });
     const searchForUser = (userId, lookedForUserUsername) => __awaiter(void 0, void 0, void 0, function* () {
         // A fuction that looks for both user
-        const lookedForUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username IN ($1, $2)", [userId, lookedForUserUsername]);
+        const lookForUserQuery = "SELECT username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
+        const lookedForUser = yield db_1.pool.query(lookForUserQuery, [userId, lookedForUserUsername]);
+        console.log(lookedForUser.rows);
         // If only one user is found is either the person search for or the person searching
         const ifUser = yield lookedForUser.rows.filter((name) => name.username === userId);
         const ifOtherUser = yield lookedForUser.rows.filter((name) => name.username === lookedForUserUsername);
+        const lookForAllUser = yield db_1.pool.query("SELECT username, about_me, img_url,  state FROM user_info");
+        console.log(lookForAllUser.rows, ifUser, "user");
+        let ifUserFollowingFollowers = { following: [], followers: [] };
+        let ifOtherUserFollowingFollowers = { following: [], followers: [] };
+        const addUserFollowingFollowersForLoggedInUser = () => __awaiter(void 0, void 0, void 0, function* () {
+            const addFollowingFollowersUser = yield lookForAllUser.rows.map((name) => {
+                ifUser[0].following.map((followingName) => {
+                    if (followingName.username === name.username) {
+                        if (ifUser[0].following.length > 0) {
+                            ifUserFollowingFollowers.following.push(name);
+                        }
+                    }
+                });
+                ifUser[0].followers.map((followersName) => {
+                    if (followersName.username === name.username) {
+                        if (ifUser[0].followers.length > 0)
+                            ifUserFollowingFollowers.followers.push(name);
+                    }
+                });
+            });
+            if (ifUserFollowingFollowers.following.length > 0 && ifUserFollowingFollowers.followers.length > 0) {
+                let changeState = yield ifUserFollowingFollowers.following.map((name) => {
+                    ifUserFollowingFollowers.followers.map((followerName) => {
+                        if (name.username === followerName.username) {
+                            name.state = "follows you";
+                        }
+                    });
+                });
+            }
+        });
+        const addUserFollowingFollowersForUserLookedFor = () => __awaiter(void 0, void 0, void 0, function* () {
+            const addFollowingFollowersUserLookedFor = yield lookForAllUser.rows.map((name) => {
+                ifOtherUser[0].following.map((followingName) => {
+                    if (followingName.username === name.username) {
+                        if (ifOtherUser[0].following.length > 0) {
+                            ifOtherUserFollowingFollowers.following.push(name);
+                        }
+                    }
+                });
+                ifOtherUser[0].followers.map((followersName) => {
+                    if (followersName.username === name.username) {
+                        if (lookedForUser[0].followers.length > 0) {
+                            ifOtherUserFollowingFollowers.followers.push(name);
+                        }
+                    }
+                });
+            });
+            if (ifOtherUserFollowingFollowers.following.length > 0) {
+                let changeState = yield ifOtherUserFollowingFollowers.following.map((name) => {
+                    ifOtherUserFollowingFollowers.followers.map((user) => {
+                        if (name.username === user.username) {
+                            name.state = "follows you";
+                        }
+                    });
+                });
+            }
+            if (ifOtherUserFollowingFollowers.following.length > 0) {
+                let changeState = yield ifOtherUserFollowingFollowers.followers.map((name) => {
+                    ifOtherUserFollowingFollowers.followers.map((user) => {
+                        if (name.username === user.username) {
+                            name.state = "follows you";
+                        }
+                    });
+                });
+            }
+        });
+        if (ifUser.length > 0 && ifOtherUser.length > 0) {
+            addUserFollowingFollowersForLoggedInUser();
+            addUserFollowingFollowersForUserLookedFor();
+        }
+        else if (ifUser.length > 0 && ifOtherUser.length === 0) {
+            addUserFollowingFollowersForLoggedInUser();
+        }
+        else if (ifUser.length === 0 && ifOtherUser.length > 0) {
+            addUserFollowingFollowersForUserLookedFor();
+        }
+        else {
+            console.log("no user found");
+        }
         if (lookedForUser.rows.length === 1) {
             // if it the person searching
             if (ifUser.length === 1 && lookedForUserUsername === ifUser[0].username) {
                 console.log("User is logged in");
-                message(ifUser[0], true, true, true, false, { id: 0, username: "", password: "" }, 11, "Only the user logged in is found");
+                message(ifUser[0], ifOtherUserFollowingFollowers, true, true, true, false, userDataObject, ifOtherUserFollowingFollowers, 11, "Only the user logged in is found");
             }
             else if (ifUser.length === 1 && lookedForUserUsername !== ifUser[0].username) {
-                message(ifUser[0], true, true, true, false, { id: 0, username: "", password: "" }, 12, "User Searched for not found");
+                message(ifUser[0], ifOtherUserFollowingFollowers, true, true, true, false, userDataObject, ifOtherUserFollowingFollowers, 12, "User Searched for not found");
             }
             else {
                 // If it's the person searched for
-                console.log("user is not logged");
-                message({ id: 0, username: "", password: "" }, true, false, false, false, lookedForUser.rows[0], 13, "Only the user searched for is found");
+                console.log("user is not logged in");
+                message(userDataObject, ifUserFollowingFollowers, true, false, false, false, lookedForUser.rows[0], ifOtherUserFollowingFollowers, 13, "Only the user searched for is found");
             }
         }
         else if (lookedForUser.rows.length === 2) {
             // It checks if both users details are availbale
             console.log("both user are looged available");
-            message(ifUser[0], true, true, true, false, ifOtherUser[0], 2, "Both users found");
+            message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, ifOtherUser[0], ifOtherUserFollowingFollowers, 2, "Both users found");
         }
         else if (lookedForUser.rows.length === 0) {
             // It checks if no user is found
-            message({ id: 0, username: "", password: "" }, false, false, false, false, { id: 0, username: "", password: "" }, 0, "No user found");
+            message(userDataObject, ifUserFollowingFollowers, false, false, false, false, userDataObject, ifOtherUserFollowingFollowers, 0, "No user found");
         }
     });
     try {
         const identification = req.headers.authorization.split(",");
-        console.log(identification);
         const verfifyToken = yield jwt.verify(identification[1], process.env.TKN);
-        console.log(verfifyToken);
         searchForUser(verfifyToken.userId, identification[2]);
     }
     catch (error) {
@@ -126,6 +216,57 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.verifyUserProfile = verifyUserProfile;
+const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    //      const { ownerUsername, userTheyTryingToFollow } = req.body
+    //        interface FollowingFollowerInterface {
+    //             name:string
+    //         }
+    //         const following = {
+    //             "name":`${userTheyTryingToFollow}`
+    //         }
+    //     const followers = {
+    //         "name": `${ownerUsername}`
+    //         }
+    //      const updateFollowersFollowingNull = async ( followingFollowers:FollowingFollowerInterface, fOrF:string, username:string ) => {
+    //          try {
+    //             const updateQuery = await.pool.query("")
+    //          } catch (error:any) {
+    //             console.log(error.message)
+    //          }
+    //     }
+    //      const updateFollowersFollowingNotNull = async ( followingFollowers:FollowingFollowerInterface, fOrF:string, username:string ) => {
+    //          try {
+    //             //    followingFollowersArray.push(followingFollowers)
+    //              const updateQuery = await pool.query(`UPDATE user_info SET ${fOrF} = jsonb_set(${fOrF}, 'name', to_jsonb($1), true ) WHERE username = $2`, [followingFollowers, username ])
+    //             //  const updateQuery = await pool.query(`UPDATE user_info SET ${fOrF} = ${fOrF} || $1  WHERE username = $2`,  [followingFollowers, username])
+    //              console.log(updateQuery)
+    //          } catch (error:any) {
+    //             console.log(error.message)
+    //          }
+    //     }
+    //     try {
+    //         const userDetails = await pool.query("SELECT username, following, followers, notification FROM user_info WHERE username IN ($1,$2)", [ownerUsername, userTheyTryingToFollow])
+    //         // check if following of the signed in user is null and the same for the followers of the  user is trying to follow
+    //         const signedInUserFollowing = await userDetails.rows.filter((name: { username: string }) => name.username === ownerUsername)
+    //         const userTheyTryingToFollowFollowers = await userDetails.rows.filter((name: { username: string }) => name.username === userTheyTryingToFollow)
+    //         // updateFollowersFollowing([], following, "following", `${signedInUserFollowing[0].username}`)
+    //         if (signedInUserFollowing === null) {
+    //             updateFollowersFollowingNull(following, "following", `${signedInUserFollowing[0].username}`)
+    //         } else {
+    //             updateFollowersFollowingNotNull(following, "following", `${signedInUserFollowing[0].username}`)
+    //         }
+    //         if (userTheyTryingToFollow === null) {
+    //              updateFollowersFollowingNull(followers, "followers", `${userTheyTryingToFollowFollowers[0].username}`)
+    //         } else {
+    //             userTheyTryingToFollow.push
+    //             updateFollowersFollowingNotNull(followers, "followers", `${userTheyTryingToFollowFollowers[0].username}`)
+    //         }
+    //         // console.log(signedInUserFollowing, )
+    //     } catch (error:any) {
+    //         console.log(error.message)
+    //     }
+});
+exports.followerUser = followerUser;
 // module.exports = {
 //     signup,
 //     signin
