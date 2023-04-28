@@ -118,15 +118,6 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                     }
                 });
             });
-            if (ifUserFollowingFollowers.following.length > 0 && ifUserFollowingFollowers.followers.length > 0) {
-                let changeState = yield ifUserFollowingFollowers.following.map((name) => {
-                    ifUserFollowingFollowers.followers.map((followerName) => {
-                        if (name.username === followerName.username) {
-                            name.state = "follows you";
-                        }
-                    });
-                });
-            }
         });
         const addUserFollowingFollowersForUserLookedFor = () => __awaiter(void 0, void 0, void 0, function* () {
             const addFollowingFollowersUserLookedFor = yield lookForAllUser.rows.map((name) => {
@@ -139,30 +130,12 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 });
                 ifOtherUser[0].followers.map((followersName) => {
                     if (followersName.username === name.username) {
-                        if (lookedForUser[0].followers.length > 0) {
+                        if (ifOtherUser[0].followers.length > 0) {
                             ifOtherUserFollowingFollowers.followers.push(name);
                         }
                     }
                 });
             });
-            if (ifOtherUserFollowingFollowers.following.length > 0) {
-                let changeState = yield ifOtherUserFollowingFollowers.following.map((name) => {
-                    ifOtherUserFollowingFollowers.followers.map((user) => {
-                        if (name.username === user.username) {
-                            name.state = "follows you";
-                        }
-                    });
-                });
-            }
-            if (ifOtherUserFollowingFollowers.following.length > 0) {
-                let changeState = yield ifOtherUserFollowingFollowers.followers.map((name) => {
-                    ifOtherUserFollowingFollowers.followers.map((user) => {
-                        if (name.username === user.username) {
-                            name.state = "follows you";
-                        }
-                    });
-                });
-            }
         });
         if (ifUser.length > 0 && ifOtherUser.length > 0) {
             addUserFollowingFollowersForLoggedInUser();
@@ -217,54 +190,23 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
 });
 exports.verifyUserProfile = verifyUserProfile;
 const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    //      const { ownerUsername, userTheyTryingToFollow } = req.body
-    //        interface FollowingFollowerInterface {
-    //             name:string
-    //         }
-    //         const following = {
-    //             "name":`${userTheyTryingToFollow}`
-    //         }
-    //     const followers = {
-    //         "name": `${ownerUsername}`
-    //         }
-    //      const updateFollowersFollowingNull = async ( followingFollowers:FollowingFollowerInterface, fOrF:string, username:string ) => {
-    //          try {
-    //             const updateQuery = await.pool.query("")
-    //          } catch (error:any) {
-    //             console.log(error.message)
-    //          }
-    //     }
-    //      const updateFollowersFollowingNotNull = async ( followingFollowers:FollowingFollowerInterface, fOrF:string, username:string ) => {
-    //          try {
-    //             //    followingFollowersArray.push(followingFollowers)
-    //              const updateQuery = await pool.query(`UPDATE user_info SET ${fOrF} = jsonb_set(${fOrF}, 'name', to_jsonb($1), true ) WHERE username = $2`, [followingFollowers, username ])
-    //             //  const updateQuery = await pool.query(`UPDATE user_info SET ${fOrF} = ${fOrF} || $1  WHERE username = $2`,  [followingFollowers, username])
-    //              console.log(updateQuery)
-    //          } catch (error:any) {
-    //             console.log(error.message)
-    //          }
-    //     }
-    //     try {
-    //         const userDetails = await pool.query("SELECT username, following, followers, notification FROM user_info WHERE username IN ($1,$2)", [ownerUsername, userTheyTryingToFollow])
-    //         // check if following of the signed in user is null and the same for the followers of the  user is trying to follow
-    //         const signedInUserFollowing = await userDetails.rows.filter((name: { username: string }) => name.username === ownerUsername)
-    //         const userTheyTryingToFollowFollowers = await userDetails.rows.filter((name: { username: string }) => name.username === userTheyTryingToFollow)
-    //         // updateFollowersFollowing([], following, "following", `${signedInUserFollowing[0].username}`)
-    //         if (signedInUserFollowing === null) {
-    //             updateFollowersFollowingNull(following, "following", `${signedInUserFollowing[0].username}`)
-    //         } else {
-    //             updateFollowersFollowingNotNull(following, "following", `${signedInUserFollowing[0].username}`)
-    //         }
-    //         if (userTheyTryingToFollow === null) {
-    //              updateFollowersFollowingNull(followers, "followers", `${userTheyTryingToFollowFollowers[0].username}`)
-    //         } else {
-    //             userTheyTryingToFollow.push
-    //             updateFollowersFollowingNotNull(followers, "followers", `${userTheyTryingToFollowFollowers[0].username}`)
-    //         }
-    //         // console.log(signedInUserFollowing, )
-    //     } catch (error:any) {
-    //         console.log(error.message)
-    //     }
+    const { ownerUsername, userTheyTryingToFollow } = req.body;
+    try {
+        const loggedInUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username = $1", [ownerUsername]);
+        const lookedForUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
+        let loggedInUserFollowing = loggedInUser.rows[0].following;
+        let lookedForUserFollowers = lookedForUser.rows[0].followers;
+        loggedInUserFollowing.push({ username: lookedForUser.rows[0].username });
+        lookedForUserFollowers.push({ username: loggedInUser.rows[0].username });
+        console.log(loggedInUserFollowing, lookedForUserFollowers);
+        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following = $1 WHERE username = $2 ", [JSON.stringify(loggedInUserFollowing), loggedInUser.rows[0].username]);
+        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = $1 WHERE username = $2", [JSON.stringify(lookedForUserFollowers), lookedForUser.rows[0].username]);
+        res.send({ message: "followed succesfully", status: true });
+        // Remeber to use socket to upadate user notification and send notification/
+    }
+    catch (error) {
+        console.log(error.message);
+    }
 });
 exports.followerUser = followerUser;
 // module.exports = {

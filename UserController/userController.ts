@@ -163,15 +163,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
                 }
             })
       }) 
-          if (ifUserFollowingFollowers.following.length > 0 && ifUserFollowingFollowers.followers.length > 0) {
-            let changeState = await ifUserFollowingFollowers.following.map((name: Details) => {
-                ifUserFollowingFollowers.followers.map((followerName:Details) => {
-                    if (name.username === followerName.username) {
-                        name.state = "follows you"
-                    }
-                })
-            })
-        }
+       
             
         }
         const addUserFollowingFollowersForUserLookedFor = async () => {
@@ -186,32 +178,14 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             })
             ifOtherUser[0].followers.map((followersName: Details) => {
                 if (followersName.username === name.username) {
-                    if (lookedForUser[0].followers.length > 0) {
+                    if (ifOtherUser[0].followers.length > 0) {
                           ifOtherUserFollowingFollowers.followers.push(name)
                     }
                   
                 }
             })
      }) 
-          if (ifOtherUserFollowingFollowers.following.length > 0 ) {
-            let changeState = await ifOtherUserFollowingFollowers.following.map((name: Details) => {
-                ifOtherUserFollowingFollowers.followers.map((user: Details) => {
-                    if (name.username === user.username) {
-                             name.state ="follows you"
-                         }
-                     })
-            })
-        }
-         
-         if (ifOtherUserFollowingFollowers.following.length > 0 ) {
-             let changeState = await ifOtherUserFollowingFollowers.followers.map((name:Details) => {
-                 ifOtherUserFollowingFollowers.followers.map((user: Details) => {
-                     if (name.username === user.username) {
-                         name.state = "follows you"
-                     }
-                 })
-            })
-        }
+       
             
         }
         if (ifUser.length > 0 && ifOtherUser.length > 0) {
@@ -284,7 +258,19 @@ export const verifyUserProfile = async (req: any, res: Response) => {
 
      try {
          const loggedInUser = await pool.query("SELECT * FROM user_info WHERE username = $1", [ownerUsername])
-         const lookedForUser = await pool.query()
+         const lookedForUser = await pool.query("SELECT * FROM user_info WHERE username = $1", [userTheyTryingToFollow])
+         
+         let loggedInUserFollowing = loggedInUser.rows[0].following
+         let lookedForUserFollowers = lookedForUser.rows[0].followers
+
+         loggedInUserFollowing.push({ username:  lookedForUser.rows[0].username })
+         lookedForUserFollowers.push({ username: loggedInUser.rows[0].username })
+         console.log(loggedInUserFollowing, lookedForUserFollowers)
+         
+         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following = $1 WHERE username = $2 ", [JSON.stringify(loggedInUserFollowing), loggedInUser.rows[0].username])
+         const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = $1 WHERE username = $2", [JSON.stringify(lookedForUserFollowers), lookedForUser.rows[0].username])
+         res.send({message:"followed succesfully", status:true})
+        // Remeber to use socket to upadate user notification and send notification/
          
      } catch (error:any) {
          console.log(error.message)

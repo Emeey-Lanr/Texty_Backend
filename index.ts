@@ -6,7 +6,7 @@ import cors from "cors"
 import {createServer} from "http"
 import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
-
+import {addUserInfoToServerDatabase } from "./socketController"
 // dotenv.config()
 require("dotenv").config()
 
@@ -27,16 +27,25 @@ const PORT = process.env.PORT
 
 
 
-
-const io = new Server (httpServer, {cors: {origin:"*"}});
+////////////////////////////////
+export const io = new Server(httpServer, { cors: { origin: "*" } });
 
 io.on("connection", (socket:Socket) => {
-    socket.emit("hello", { id: socket.id })
-    socket.join("wale")
-    socket.on("shit", (data) => {
-        console.log(data)
-        socket.emit("get", data.name)
-    })
+    socket.emit("hello", { id: socket.id }) 
+
+    // socket.on("userInfoOrSearchedForInfo", (data) => {
+    //     console.log(data, "this the data")
+    // })
+  
+    socket.on("userInfoOrSearchedForInfo", (data) => {
+        if (data.userinfo.username !== "") {
+           addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor)
+        }
+    //    console.log(data.userinfo , data.userLookedFor)
+})
+   socket.on("shit", (data)=>{
+    console.log(data)
+   })
     
   
     
