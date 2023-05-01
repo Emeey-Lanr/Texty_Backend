@@ -6,7 +6,7 @@ import cors from "cors"
 import {createServer} from "http"
 import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
-import {addUserInfoToServerDatabase } from "./socketController"
+import {addUserInfoToServerDatabase, followUserSearchedForFromProfileFunction } from "./socketController"
 // dotenv.config()
 require("dotenv").config()
 
@@ -37,20 +37,27 @@ io.on("connection", (socket:Socket) => {
     //     console.log(data, "this the data")
     // })
   
+    // Database details registering
     socket.on("userInfoOrSearchedForInfo", (data) => {
         if (data.userinfo.username !== "") {
+            socket.join(data.userinfo.username)
            addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor)
         }
     //    console.log(data.userinfo , data.userLookedFor)
 })
-   socket.on("shit", (data)=>{
-    console.log(data)
-   })
+   
+// Follow another user from your profile page
+    socket.on("followUserSearchedForFromProfile", async (data) => {
+      console.log(data.ownerUsername)
+      
+        let details = followUserSearchedForFromProfileFunction(data.ownerUsername, data.userTheyTryingToFollow)
+        console.log(details)
+        io.sockets.to(data.ownerUsername).emit("followedUserLookedFor", { lookedForUserFollowers: details.followerDetails })
+        io.sockets.to(data.userTheyTryingToFollow).emit("followedNotification", {notification:details.notification, addedFollowers:details.followerDetails})
+    //     socket.emit("followedUserLookedFor", {lookedForUserFollowers:details})
     
+    })
   
-    
-    // socket.on()
-
 
     socket.on("disconnect", () => {
         console.log("a user has disconnected")

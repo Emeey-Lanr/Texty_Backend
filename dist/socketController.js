@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addUserInfoToServerDatabase = void 0;
+exports.followUserSearchedForFromProfileFunction = exports.addUserInfoToServerDatabase = void 0;
 const serverDataBase = [];
 const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
     serverDataBase.map((name, id) => {
@@ -67,3 +67,26 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
     console.log(serverDataBase);
 };
 exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
+const followUserSearchedForFromProfileFunction = (userLoggedIn, userLookedFor) => {
+    const findLoggedInUser = serverDataBase.find((name) => name.username === userLoggedIn);
+    const findTheLookedForUser = serverDataBase.find((name) => name.username === userLookedFor);
+    console.log(findLoggedInUser, findTheLookedForUser);
+    const loggedInUserDetails = {
+        username: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.username,
+        img_url: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.img_url,
+        about_me: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.about_me,
+    };
+    const lookedForUserDetails = {
+        username: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.username,
+        img_url: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.img_url,
+        about_me: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.about_me,
+    };
+    findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.push(lookedForUserDetails);
+    findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.push(loggedInUserDetails);
+    // followed means this type on notification is a type where user gets to know they've been followed and can follow back via the notification
+    findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.notification.push({ followed: true, checked: false, notificationDetails: `${userLoggedIn} follows you`, username: userLoggedIn, img_url: findTheLookedForUser.img_url });
+    return { followerDetails: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers, notification: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.notification };
+    // let m = findTheLookedForUser?.followers
+    // return m
+};
+exports.followUserSearchedForFromProfileFunction = followUserSearchedForFromProfileFunction;

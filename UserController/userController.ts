@@ -117,7 +117,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             case  11:
                 return res.send({ userData: userData,followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser,  followingFollowersLookedFor, message });
             case 12:
-                return res.send({ userData: userData, followingFollowersLookedFor, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
+                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
             case 13:
                 return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message });
             case 2:
@@ -130,22 +130,35 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         }
         
     }
-    const searchForUser = async (userId: string, lookedForUserUsername: string) => {
+    const searchForUser = async (userId: string, lookedForUserUsername: string,) => {
         // A fuction that looks for both user
         
         const lookForUserQuery = "SELECT username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
         const lookedForUser = await pool.query(lookForUserQuery, [userId, lookedForUserUsername])
-        console.log(lookedForUser.rows)
+
 
         // If only one user is found is either the person search for or the person searching
         const ifUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === userId)
         const ifOtherUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === lookedForUserUsername)
 
-         const lookForAllUser = await pool.query("SELECT username, about_me, img_url,  state FROM user_info")
+         const lookForAllUser = await pool.query("SELECT username, about_me, img_url FROM user_info")
         console.log(lookForAllUser.rows, ifUser, "user")
       
         let ifUserFollowingFollowers:F = {following:[], followers:[] }
         let ifOtherUserFollowingFollowers: F = { following: [], followers: [] }
+        let updateNotification = []
+        // The lookedForUserUsername can be a path identification and not just only a username
+        // if we identify it to be notification which is a path we change all checked to true that means the notification has been checked
+        console.log(lookedForUserUsername, "this is it")
+        if (lookedForUserUsername === "notification") {
+            
+                      updateNotification = await ifUser[0].notification
+                      updateNotification.map((data: { checked:boolean }) => {
+                     data.checked = true
+                      })
+             const updateNotificationQuery  = await pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser.username])
+            //   console.log(updateNotification, "yea your notification")
+           }
         const addUserFollowingFollowersForLoggedInUser = async () => {
               const addFollowingFollowersUser =  await lookForAllUser.rows.map((name: userData) => {
             ifUser[0].following.map((followingName: Details) => {
@@ -162,6 +175,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
                      ifUserFollowingFollowers.followers.push(name)
                 }
             })
+            
       }) 
        
             
@@ -210,9 +224,9 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             // if it the person searching
             if (ifUser.length === 1 && lookedForUserUsername === ifUser[0].username) {
                 console.log("User is logged in")
-                message(ifUser[0], ifOtherUserFollowingFollowers, true, true, true, false, userDataObject,  ifOtherUserFollowingFollowers,11,"Only the user logged in is found")
+                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,  ifOtherUserFollowingFollowers,11,"Only the user logged in is found")
             } else if (ifUser.length === 1 && lookedForUserUsername !== ifUser[0].username) {
-                message(ifUser[0], ifOtherUserFollowingFollowers, true, true, true, false, userDataObject,ifOtherUserFollowingFollowers,  12, "User Searched for not found")
+                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,ifOtherUserFollowingFollowers,  12, "User Searched for not found")
             }else {
 // If it's the person searched for
                 console.log("user is not logged in")
@@ -262,13 +276,16 @@ export const verifyUserProfile = async (req: any, res: Response) => {
          
          let loggedInUserFollowing = loggedInUser.rows[0].following
          let lookedForUserFollowers = lookedForUser.rows[0].followers
+         let lookedForUserNotification = lookedForUser.rows[0].notification
 
          loggedInUserFollowing.push({ username:  lookedForUser.rows[0].username })
          lookedForUserFollowers.push({ username: loggedInUser.rows[0].username })
+        //   const notification =
+         lookedForUserNotification.push( { followed: true, checked: false, notificationDetails:"follows you", username:loggedInUser.rows[0].username})
          console.log(loggedInUserFollowing, lookedForUserFollowers)
-         
+        
          const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following = $1 WHERE username = $2 ", [JSON.stringify(loggedInUserFollowing), loggedInUser.rows[0].username])
-         const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = $1 WHERE username = $2", [JSON.stringify(lookedForUserFollowers), lookedForUser.rows[0].username])
+         const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = $1, notification = $2 WHERE username = $3", [JSON.stringify(lookedForUserFollowers),JSON.stringify(lookedForUserNotification), lookedForUser.rows[0].username])
          res.send({message:"followed succesfully", status:true})
         // Remeber to use socket to upadate user notification and send notification/
          

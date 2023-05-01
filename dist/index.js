@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -29,16 +38,23 @@ exports.io.on("connection", (socket) => {
     // socket.on("userInfoOrSearchedForInfo", (data) => {
     //     console.log(data, "this the data")
     // })
+    // Database details registering
     socket.on("userInfoOrSearchedForInfo", (data) => {
         if (data.userinfo.username !== "") {
+            socket.join(data.userinfo.username);
             (0, socketController_1.addUserInfoToServerDatabase)(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor);
         }
         //    console.log(data.userinfo , data.userLookedFor)
     });
-    socket.on("shit", (data) => {
-        console.log(data);
-    });
-    // socket.on()
+    // Follow another user from your profile page
+    socket.on("followUserSearchedForFromProfile", (data) => __awaiter(void 0, void 0, void 0, function* () {
+        console.log(data.ownerUsername);
+        let details = (0, socketController_1.followUserSearchedForFromProfileFunction)(data.ownerUsername, data.userTheyTryingToFollow);
+        console.log(details);
+        exports.io.sockets.to(data.ownerUsername).emit("followedUserLookedFor", { lookedForUserFollowers: details.followerDetails });
+        exports.io.sockets.to(data.userTheyTryingToFollow).emit("followedNotification", { notification: details.notification, addedFollowers: details.followerDetails });
+        //     socket.emit("followedUserLookedFor", {lookedForUserFollowers:details})
+    }));
     socket.on("disconnect", () => {
         console.log("a user has disconnected");
     });
