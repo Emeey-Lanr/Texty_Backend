@@ -46,15 +46,44 @@ exports.io.on("connection", (socket) => {
         }
         //    console.log(data.userinfo , data.userLookedFor)
     });
-    // Follow another user from your profile page
-    socket.on("followUserSearchedForFromProfile", (data) => __awaiter(void 0, void 0, void 0, function* () {
-        console.log(data.ownerUsername);
-        let details = (0, socketController_1.followUserSearchedForFromProfileFunction)(data.ownerUsername, data.userTheyTryingToFollow);
+    const followFunction = (emitingSocketName1, emitingSocketName2, userLoggedInUserName, userTheyWantToFollow, notificationWord) => {
+        let details = (0, socketController_1.followUser)(userLoggedInUserName, userTheyWantToFollow, notificationWord);
         console.log(details);
-        exports.io.sockets.to(data.ownerUsername).emit("followedUserLookedFor", { lookedForUserFollowers: details.followerDetails });
-        exports.io.sockets.to(data.userTheyTryingToFollow).emit("followedNotification", { notification: details.notification, addedFollowers: details.followerDetails });
-        //     socket.emit("followedUserLookedFor", {lookedForUserFollowers:details})
+        exports.io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName1}`, { lookedForUserFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser: userLoggedInUserName, error: details.errorStatus }),
+            exports.io.sockets.to(userTheyWantToFollow).emit(`${emitingSocketName2}`, { notification: details.notification, addedFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser: userTheyWantToFollow, error: details.errorStatus });
+    };
+    const unfollowFunction = (emitingSocketName, userLoggedInUserName, userYouWantToUnfollow) => {
+        const details = (0, socketController_1.unfollowUser)(userLoggedInUserName, userYouWantToUnfollow);
+        console.log(details);
+        exports.io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName}`, { userLoggedInFollowing: details.followingForUserThatWantsToUnfollow, userTheyWantToUnFollowFollowers: details.followersForUserTheyHaveUnfollowed, loggedInUser: userLoggedInUserName, error: details.error });
+    };
+    // Allows you to follow user searched for via the route the other user profile is diplayed
+    socket.on("followSocket1", (data) => __awaiter(void 0, void 0, void 0, function* () {
+        console.log(data.ownerUsername);
+        followFunction("followedUserLookedFor", "followedNotification", data.ownerUsername, data.userTheyTryingToFollow, data.notificationWords);
     }));
+    // Allows you to unfollow user searched for via route because user Id  username is not the same as the username in the redux store
+    socket.on("unfollowSocket1", (data) => {
+        const { userLoggedInUserName, userTheyWantToUnfollow } = data;
+        console.log(userLoggedInUserName, userTheyWantToUnfollow);
+        unfollowFunction("unFollowed", userLoggedInUserName, userTheyWantToUnfollow);
+    });
+    //when  user Id  username is the same as the username in the redux store
+    socket.on("followSocket2", (data) => {
+        followFunction("userFollowingWhenFollowing", "followedNotification", data.ownerUsername, data.userTheyTryingToFollow, data.notificationWords);
+    });
+    socket.on("unfollowSocket2", (data) => {
+        const { userLoggedInUserName, userTheyWantToUnfollow } = data;
+        unfollowFunction("userFollowingWhenUnFollowing", userLoggedInUserName, userTheyWantToUnfollow);
+    });
+    // follow, unfollow socket 2 happens when you follow or unfollow someone via a searched person route followers and following
+    socket.on("followSocket3", (data) => {
+        followFunction("followingViaAnotherPersonFFlist", "followedNotification", data.ownerUsername, data.userTheyTryingToFollow, data.notificationWords);
+    });
+    socket.on("unfollowSocket3", (data) => {
+        const { userLoggedInUserName, userTheyWantToUnfollow } = data;
+        unfollowFunction("unfollowingViaAnotherPersonFFlist", userLoggedInUserName, userTheyWantToUnfollow);
+    });
     socket.on("disconnect", () => {
         console.log("a user has disconnected");
     });

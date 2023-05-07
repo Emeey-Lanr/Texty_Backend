@@ -153,11 +153,19 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         if (lookedForUserUsername === "notification") {
             
                       updateNotification = await ifUser[0].notification
-                      updateNotification.map((data: { checked:boolean }) => {
-                     data.checked = true
+            updateNotification.map((data: { checked: boolean }) => {
+                       if (!data.checked) {
+                                  data.checked = true
+                          }
+                 
                       })
-             const updateNotificationQuery  = await pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser.username])
-            //   console.log(updateNotification, "yea your notification")
+            try {
+            const updateNotificationQuery  = await pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser[0].username])
+            } catch (error:any) {
+             console.log(error.message)   
+            }
+        
+              console.log(updateNotification, "yea your notification")
            }
         const addUserFollowingFollowersForLoggedInUser = async () => {
               const addFollowingFollowersUser =  await lookForAllUser.rows.map((name: userData) => {
@@ -268,26 +276,16 @@ export const verifyUserProfile = async (req: any, res: Response) => {
 }
 
  export const followerUser = async (req: Request, res: Response) => {
-     const { ownerUsername, userTheyTryingToFollow } = req.body
+     const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body
 
      try {
-         const loggedInUser = await pool.query("SELECT * FROM user_info WHERE username = $1", [ownerUsername])
-         const lookedForUser = await pool.query("SELECT * FROM user_info WHERE username = $1", [userTheyTryingToFollow])
-         
-         let loggedInUserFollowing = loggedInUser.rows[0].following
-         let lookedForUserFollowers = lookedForUser.rows[0].followers
-         let lookedForUserNotification = lookedForUser.rows[0].notification
 
-         loggedInUserFollowing.push({ username:  lookedForUser.rows[0].username })
-         lookedForUserFollowers.push({ username: loggedInUser.rows[0].username })
-        //   const notification =
-         lookedForUserNotification.push( { followed: true, checked: false, notificationDetails:"follows you", username:loggedInUser.rows[0].username})
-         console.log(loggedInUserFollowing, lookedForUserFollowers)
+         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow}), ownerUsername ])
+         const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3",
+             [JSON.stringify({ username: ownerUsername }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }),userTheyTryingToFollow])
+
+         
         
-         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following = $1 WHERE username = $2 ", [JSON.stringify(loggedInUserFollowing), loggedInUser.rows[0].username])
-         const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = $1, notification = $2 WHERE username = $3", [JSON.stringify(lookedForUserFollowers),JSON.stringify(lookedForUserNotification), lookedForUser.rows[0].username])
-         res.send({message:"followed succesfully", status:true})
-        // Remeber to use socket to upadate user notification and send notification/
          
      } catch (error:any) {
          console.log(error.message)
@@ -296,6 +294,21 @@ export const verifyUserProfile = async (req: any, res: Response) => {
              
 
     
+ }
+
+ export const unfollowUser = async (req: Request, res: Response) => {
+     const { userLoggedInUserName, userTheyWantToUnfollow } = req.body
+     console.log(userLoggedInUserName, userTheyWantToUnfollow)
+     const removeUserFromUserFollowingQuery = "UPDATE user_info SET following = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(following) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND following @> $3"
+    const  removeUserFromUserFollowerQuery = "UPDATE user_info SET followers = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(followers) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND followers @> $3"
+    try {
+        const removeUserFromUserFollowing = await pool.query(removeUserFromUserFollowingQuery, [userTheyWantToUnfollow, userLoggedInUserName, JSON.stringify([{username:userTheyWantToUnfollow}])])
+        const removeUserFromUserFollower = await pool.query(removeUserFromUserFollowerQuery, [userLoggedInUserName, userTheyWantToUnfollow,JSON.stringify([{username:userLoggedInUserName}])]) 
+    } catch (error: any) {
+        console.log(error.message, "error message")
+        
+    }
+     
  }
 
 

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const brcypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -108,10 +108,17 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
         if (lookedForUserUsername === "notification") {
             updateNotification = yield ifUser[0].notification;
             updateNotification.map((data) => {
-                data.checked = true;
+                if (!data.checked) {
+                    data.checked = true;
+                }
             });
-            const updateNotificationQuery = yield db_1.pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser.username]);
-            //   console.log(updateNotification, "yea your notification")
+            try {
+                const updateNotificationQuery = yield db_1.pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser[0].username]);
+            }
+            catch (error) {
+                console.log(error.message);
+            }
+            console.log(updateNotification, "yea your notification");
         }
         const addUserFollowingFollowersForLoggedInUser = () => __awaiter(void 0, void 0, void 0, function* () {
             const addFollowingFollowersUser = yield lookForAllUser.rows.map((name) => {
@@ -201,28 +208,30 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
 });
 exports.verifyUserProfile = verifyUserProfile;
 const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { ownerUsername, userTheyTryingToFollow } = req.body;
+    const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body;
     try {
-        const loggedInUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username = $1", [ownerUsername]);
-        const lookedForUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
-        let loggedInUserFollowing = loggedInUser.rows[0].following;
-        let lookedForUserFollowers = lookedForUser.rows[0].followers;
-        let lookedForUserNotification = lookedForUser.rows[0].notification;
-        loggedInUserFollowing.push({ username: lookedForUser.rows[0].username });
-        lookedForUserFollowers.push({ username: loggedInUser.rows[0].username });
-        //   const notification =
-        lookedForUserNotification.push({ followed: true, checked: false, notificationDetails: "follows you", username: loggedInUser.rows[0].username });
-        console.log(loggedInUserFollowing, lookedForUserFollowers);
-        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following = $1 WHERE username = $2 ", [JSON.stringify(loggedInUserFollowing), loggedInUser.rows[0].username]);
-        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = $1, notification = $2 WHERE username = $3", [JSON.stringify(lookedForUserFollowers), JSON.stringify(lookedForUserNotification), lookedForUser.rows[0].username]);
-        res.send({ message: "followed succesfully", status: true });
-        // Remeber to use socket to upadate user notification and send notification/
+        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow }), ownerUsername]);
+        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
     }
     catch (error) {
         console.log(error.message);
     }
 });
 exports.followerUser = followerUser;
+const unfollowUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { userLoggedInUserName, userTheyWantToUnfollow } = req.body;
+    console.log(userLoggedInUserName, userTheyWantToUnfollow);
+    const removeUserFromUserFollowingQuery = "UPDATE user_info SET following = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(following) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND following @> $3";
+    const removeUserFromUserFollowerQuery = "UPDATE user_info SET followers = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(followers) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND followers @> $3";
+    try {
+        const removeUserFromUserFollowing = yield db_1.pool.query(removeUserFromUserFollowingQuery, [userTheyWantToUnfollow, userLoggedInUserName, JSON.stringify([{ username: userTheyWantToUnfollow }])]);
+        const removeUserFromUserFollower = yield db_1.pool.query(removeUserFromUserFollowerQuery, [userLoggedInUserName, userTheyWantToUnfollow, JSON.stringify([{ username: userLoggedInUserName }])]);
+    }
+    catch (error) {
+        console.log(error.message, "error message");
+    }
+});
+exports.unfollowUser = unfollowUser;
 // module.exports = {
 //     signup,
 //     signin
