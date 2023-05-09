@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const brcypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -92,13 +92,12 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     });
     const searchForUser = (userId, lookedForUserUsername) => __awaiter(void 0, void 0, void 0, function* () {
         // A fuction that looks for both user
-        const lookForUserQuery = "SELECT username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
+        const lookForUserQuery = "SELECT id, username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
         const lookedForUser = yield db_1.pool.query(lookForUserQuery, [userId, lookedForUserUsername]);
         // If only one user is found is either the person search for or the person searching
         const ifUser = yield lookedForUser.rows.filter((name) => name.username === userId);
         const ifOtherUser = yield lookedForUser.rows.filter((name) => name.username === lookedForUserUsername);
-        const lookForAllUser = yield db_1.pool.query("SELECT username, about_me, img_url FROM user_info");
-        console.log(lookForAllUser.rows, ifUser, "user");
+        const lookForAllUser = yield db_1.pool.query("SELECT id, username, about_me, img_url FROM user_info");
         let ifUserFollowingFollowers = { following: [], followers: [] };
         let ifOtherUserFollowingFollowers = { following: [], followers: [] };
         let updateNotification = [];
@@ -210,8 +209,11 @@ exports.verifyUserProfile = verifyUserProfile;
 const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body;
     try {
-        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow }), ownerUsername]);
-        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
+        const searchUserLoggedInId = yield db_1.pool.query("SELECT id FROM user_info WHERE username = $1", [ownerUsername]);
+        const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
+        //  console.log(searchUserLoggedInId.rows[0].id, searchThePersonHeWantsToFollowId.rows[0].id)
+        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow, id: searchThePersonHeWantsToFollowId.rows[0].id }), ownerUsername]);
+        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername, id: searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
     }
     catch (error) {
         console.log(error.message);
@@ -232,6 +234,17 @@ const unfollowUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.unfollowUser = unfollowUser;
+const searchForUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // const lookedForAllUsers = 
+        const allUsers = yield db_1.pool.query("SELECT id, username, img_url, about_me, following, followers FROM user_info");
+        const ifUserExist = yield allUsers.rows.filter((name) => name.username.toUpperCase().indexOf(req.body.username.toUpperCase()) > -1);
+        res.send({ status: true, ifUserExist, group: [] });
+    }
+    catch (error) {
+    }
+});
+exports.searchForUsers = searchForUsers;
 // module.exports = {
 //     signup,
 //     signin

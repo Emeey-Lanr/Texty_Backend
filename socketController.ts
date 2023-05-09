@@ -13,6 +13,7 @@ interface Notification {
 
 }
 interface ServerDatabase {
+    id:string,
     username: string;
     img_url: string;
     about_me: string;
@@ -105,12 +106,14 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
         errorStatus = false
     }
    console.log(errorStatus)
-         const loggedInUserDetails = {
+    const loggedInUserDetails = {
+              id:findLoggedInUser?.id,
              username: findLoggedInUser?.username,
     img_url: findLoggedInUser?.img_url,
     about_me: findLoggedInUser?.about_me,
     }
     const lookedForUserDetails = {
+        id:findTheLookedForUser?.id,
          username: findTheLookedForUser?.username,
     img_url: findTheLookedForUser?.img_url,
     about_me: findTheLookedForUser?.about_me,

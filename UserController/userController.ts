@@ -133,7 +133,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
     const searchForUser = async (userId: string, lookedForUserUsername: string,) => {
         // A fuction that looks for both user
         
-        const lookForUserQuery = "SELECT username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
+        const lookForUserQuery = "SELECT id, username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
         const lookedForUser = await pool.query(lookForUserQuery, [userId, lookedForUserUsername])
 
 
@@ -141,9 +141,8 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         const ifUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === userId)
         const ifOtherUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === lookedForUserUsername)
 
-         const lookForAllUser = await pool.query("SELECT username, about_me, img_url FROM user_info")
-        console.log(lookForAllUser.rows, ifUser, "user")
-      
+         const lookForAllUser = await pool.query("SELECT id, username, about_me, img_url FROM user_info")
+       
         let ifUserFollowingFollowers:F = {following:[], followers:[] }
         let ifOtherUserFollowingFollowers: F = { following: [], followers: [] }
         let updateNotification = []
@@ -279,10 +278,13 @@ export const verifyUserProfile = async (req: any, res: Response) => {
      const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body
 
      try {
-
-         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow}), ownerUsername ])
+         const searchUserLoggedInId = await pool.query("SELECT id FROM user_info WHERE username = $1", [ownerUsername])
+         const searchThePersonHeWantsToFollowId = await pool.query("SELECT id FROM user_info WHERE username = $1", [userTheyTryingToFollow])
+        //  console.log(searchUserLoggedInId.rows[0].id, searchThePersonHeWantsToFollowId.rows[0].id)
+ 
+         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow, id:searchThePersonHeWantsToFollowId.rows[0].id}), ownerUsername ])
          const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3",
-             [JSON.stringify({ username: ownerUsername }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }),userTheyTryingToFollow])
+             [JSON.stringify({ username: ownerUsername, id:searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }),userTheyTryingToFollow])
 
          
         
@@ -309,7 +311,27 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         
     }
      
- }
+}
+
+
+export const searchForUsers = async (req: Request, res: Response) => {
+    try {
+        // const lookedForAllUsers = 
+        const allUsers = await pool.query("SELECT id, username, img_url, about_me, following, followers FROM user_info")
+        const ifUserExist = await allUsers.rows.filter((name: { username: string }) => name.username.toUpperCase().indexOf(req.body.username.toUpperCase()) > -1);
+
+
+     res.send({status:true, ifUserExist, group:[]})
+
+        
+
+        
+    } catch (error:any) {
+        
+    }
+}
+
+
 
 
 
