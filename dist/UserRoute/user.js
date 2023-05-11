@@ -13,4 +13,5 @@ exports.route.get("/verifyUserProfile", userController_1.verifyUserProfile);
 exports.route.post("/followUser", userController_1.followerUser);
 exports.route.post("/unfollowUser", userController_1.unfollowUser);
 exports.route.post("/search", userController_1.searchForUsers);
+exports.route.post("/sendMessageOrCreate", userController_1.sendOrCreateMessageConnection);
 // export route

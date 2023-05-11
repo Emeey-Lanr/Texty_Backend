@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unfollowUser = exports.followUser = exports.addUserInfoToServerDatabase = void 0;
+exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserInfoToServerDatabase = void 0;
 const serverDataBase = [];
+let serverMessageDataBase = [];
 const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
     serverDataBase.map((name, id) => {
         if (name.username === username) {
@@ -11,7 +12,7 @@ const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
     serverDataBase[serverId] = details;
     serverDataBase.push(secondDetails);
 };
-const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername, loggedInUserDetails, userLookedForDetails) => {
+const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername, loggedInUserDetails, userLookedForDetails, userAllMessage) => {
     if (userLookedForUsername === "") {
         let serverId = 0;
         const checkifUserExist = serverDataBase.find((name) => name.username === userLoggedInUsername);
@@ -64,9 +65,21 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
             console.log("logged in user exist but the other one doesn't");
         }
     }
-    console.log(serverDataBase);
+    // For add messages to db
+    serverMessageDataBase = serverMessageDataBase.filter((details) => details.owner !== userLoggedInUsername);
+    const loggedInuserAllMessageLength = userAllMessage.length;
+    userAllMessage.map((details, id) => {
+        const check = serverMessageDataBase.filter((details) => details.owner === userLoggedInUsername).length;
+        if (check <= loggedInuserAllMessageLength) {
+            serverMessageDataBase.push(details);
+        }
+    });
+    console.log(serverDataBase, serverMessageDataBase);
 };
 exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
+// export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
+//     // serverMessageDataBase.push()
+// }
 const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
     const findLoggedInUser = serverDataBase.find((name) => name.username === userLoggedIn);
     const findTheLookedForUser = serverDataBase.find((name) => name.username === userLookedFor);
@@ -128,3 +141,26 @@ const unfollowUser = (userLoggedInUserName, userTheyWantToUnfollow) => {
     return { followingForUserThatWantsToUnfollow: userThatWantToUnfollowDetails === null || userThatWantToUnfollowDetails === void 0 ? void 0 : userThatWantToUnfollowDetails.following, followersForUserTheyHaveUnfollowed: userTheyWantToUnfolllowDetails === null || userTheyWantToUnfolllowDetails === void 0 ? void 0 : userTheyWantToUnfolllowDetails.followers, error: errorStatus };
 };
 exports.unfollowUser = unfollowUser;
+const createMessageBoxOrSendMessage = (owner, notowner, owner_imgurl, notowner_imgurl, incomingMessageOwner, incomingMessageNotOwner) => {
+    const ownerMessage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner);
+    const notOwnerMessage = serverMessageDataBase.find((name) => name.owner === notowner && name.notowner === owner);
+    if (ownerMessage && notOwnerMessage) {
+        ownerMessage.message.push(incomingMessageOwner);
+        notOwnerMessage.message.push(incomingMessageNotOwner);
+    }
+    else if (ownerMessage && !notOwnerMessage) {
+        ownerMessage.message.push(incomingMessageOwner);
+        serverMessageDataBase.push({ owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
+    }
+    else if (!ownerMessage && notOwnerMessage) {
+        serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] });
+        notOwnerMessage.message.push(incomingMessageNotOwner);
+    }
+    else if (!ownerMessage && !notOwnerMessage) {
+        serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] }, { owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
+    }
+    // ownerMessage.message.push(incomingMessage)
+    //  console.log(ownerMessage, notOwnerMessage)
+    return serverMessageDataBase;
+};
+exports.createMessageBoxOrSendMessage = createMessageBoxOrSendMessage;

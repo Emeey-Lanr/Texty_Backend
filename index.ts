@@ -6,7 +6,7 @@ import cors from "cors"
 import {createServer} from "http"
 import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
-import {addUserInfoToServerDatabase, followUser, unfollowUser} from "./socketController"
+import {addUserInfoToServerDatabase, followUser, unfollowUser, createMessageBoxOrSendMessage} from "./socketController"
 // dotenv.config()
 require("dotenv").config()
 
@@ -41,7 +41,7 @@ io.on("connection", (socket:Socket) => {
     socket.on("userInfoOrSearchedForInfo", (data) => {
         if (data.userinfo.username !== "") {
             socket.join(data.userinfo.username)
-           addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor)
+           addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
         }
     //    console.log(data.userinfo , data.userLookedFor)
 })
@@ -96,9 +96,29 @@ io.on("connection", (socket:Socket) => {
        unfollowFunction("unfollowingViaAnotherPersonFFlist", userLoggedInUserName, userTheyWantToUnfollow)
     })
 
+
+    // Socket for private messaging 
+    socket.on("privateMessage", (data) => {
+        // const message = (checked:boolean) => {
+        //     return {sender:data.sender, time:data.time, text:data.text, checked:checked}
+        // }
+      const messageDataBase =   createMessageBoxOrSendMessage(data.owner, data.notowner, data.owner_imgurl, data.notowner_imgurl, {sender:data.sender, time:data.time, text:data.text, checked:true}, {sender:data.sender, time:data.time, text:data.text, checked:false} )
+       
+        const ownerMessageDetails = messageDataBase.find((name) => name.owner === data.owner && name.notowner === data.notowner)
+        const notOwnerMessageDetails = messageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner)
+        
+        io.sockets.to(data.owner).emit("incomingMessage", ownerMessageDetails)
+        io.sockets.to(data.notowner).emit("incomingMessage", notOwnerMessageDetails)
+      //  io.sockets.to().emit()
+        //  io.sockets.to().emit()
+         
+    })
+
     socket.on("disconnect", () => {
         console.log("a user has disconnected")
     })
+
+   
     
 })
 

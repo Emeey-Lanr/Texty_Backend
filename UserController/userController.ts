@@ -110,20 +110,20 @@ state:""
         }
 
 export const verifyUserProfile = async (req: any, res: Response) => {
-    const message = async (userData?: userData,followingFollowersUser?:F,  status?: boolean, loggedIn?: boolean, currentUser?: boolean, noUserFound?: boolean, lookedForUser?: userData,followingFollowersLookedFor?:F, id?: number, message?: string) => {
+    const message = async (userData?: userData,followingFollowersUser?:F,  status?: boolean, loggedIn?: boolean, currentUser?: boolean, noUserFound?: boolean, lookedForUser?: userData,followingFollowersLookedFor?:F, id?: number, message?: string, userMessage?:{}[] | []) => {
        
           
         switch (id) {
             case  11:
-                return res.send({ userData: userData,followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser,  followingFollowersLookedFor, message });
+                return res.send({ userData: userData,followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser,  followingFollowersLookedFor, message, userMessage });
             case 12:
-                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message });
+                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, message, userMessage });
             case 13:
-                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message });
+                return res.send({ userData: userData, status: status, loggedIn: loggedIn, currentUser: currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message, userMessage });
             case 2:
-                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message });
+                return res.send({ userData: userData, followingFollowersUser, status: status, loggedIn: loggedIn, currentUser, lookedForUser: lookedForUser, followingFollowersLookedFor, message: message, userMessage });
             case 0:
-                return res.send({ bothUnavailable: noUserFound, status: status, loggedIn: loggedIn, message: message });
+                return res.send({ bothUnavailable: noUserFound, status: status, loggedIn: loggedIn, message: message, userMessage });
             default :
                 return res.send({noUserFound:noUserFound, message:message})
                 
@@ -134,7 +134,19 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         // A fuction that looks for both user
         
         const lookForUserQuery = "SELECT id, username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
+        
         const lookedForUser = await pool.query(lookForUserQuery, [userId, lookedForUserUsername])
+        const searchLoggedInUserMessage = await pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1", [userId])
+        // This helps to get current user profile image for chat identification 
+        const addImages =  lookedForUser.rows.map((name: { username: string, img_url:string }) => {
+            searchLoggedInUserMessage.rows.map((namee: { notowner: string, notowner_imgurl: string }) => {
+                if (namee.notowner === name.username) {
+                         namee.notowner_imgurl = name.img_url
+                     }
+            
+         })
+             })
+        
 
 
         // If only one user is found is either the person search for or the person searching
@@ -231,21 +243,21 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             // if it the person searching
             if (ifUser.length === 1 && lookedForUserUsername === ifUser[0].username) {
                 console.log("User is logged in")
-                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,  ifOtherUserFollowingFollowers,11,"Only the user logged in is found")
+                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,  ifOtherUserFollowingFollowers,11,"Only the user logged in is found", searchLoggedInUserMessage.rows)
             } else if (ifUser.length === 1 && lookedForUserUsername !== ifUser[0].username) {
-                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,ifOtherUserFollowingFollowers,  12, "User Searched for not found")
+                message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,ifOtherUserFollowingFollowers,  12, "User Searched for not found", searchLoggedInUserMessage.rows)
             }else {
 // If it's the person searched for
                 console.log("user is not logged in")
-                message(userDataObject, ifUserFollowingFollowers, true, false, false, false, lookedForUser.rows[0], ifOtherUserFollowingFollowers,13, "Only the user searched for is found")
+                message(userDataObject, ifUserFollowingFollowers, true, false, false, false, lookedForUser.rows[0], ifOtherUserFollowingFollowers,13, "Only the user searched for is found", [])
             }
         } else if (lookedForUser.rows.length === 2) {
             // It checks if both users details are availbale
             console.log("both user are looged available")
-             message( ifUser[0], ifUserFollowingFollowers, true, true, true, false, ifOtherUser[0], ifOtherUserFollowingFollowers, 2, "Both users found")
+             message( ifUser[0], ifUserFollowingFollowers, true, true, true, false, ifOtherUser[0], ifOtherUserFollowingFollowers, 2, "Both users found", searchLoggedInUserMessage.rows)
         } else if (lookedForUser.rows.length === 0) {
             // It checks if no user is found
-            message(userDataObject,ifUserFollowingFollowers, false, false, false, false, userDataObject, ifOtherUserFollowingFollowers, 0, "No user found")
+            message(userDataObject,ifUserFollowingFollowers, false, false, false, false, userDataObject, ifOtherUserFollowingFollowers, 0, "No user found", [])
           
          
        }
@@ -263,7 +275,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
        
         
     } catch (error:any) {
-        if (error.message === "jwt malformed") {
+        if (error.message === "jwt malformed"  || error.message === "jwt expired" ) {
             const identification = req.headers.authorization.split(",")
             searchForUser("", identification[2])
         }
@@ -332,6 +344,45 @@ export const searchForUsers = async (req: Request, res: Response) => {
 }
 
 
+export const sendOrCreateMessageConnection = async (req:Request, res:Response) => {
+    try {
+        console.log(req.body)
+        const { owner, notowner, sender, text, time } = req.body
+        const searchForBothUsersQuery = "SELECT * FROM groupie_p_chat WHERE owner = $1 AND notowner = $2"
+        const searchForOwnerMessageBox = await pool.query(searchForBothUsersQuery, [owner, notowner])
+        const searchForNotOwnerMessageBox = await pool.query(searchForBothUsersQuery, [notowner, owner])
+        
+        const addToExistingQuery = "UPDATE groupie_p_chat SET message = message || $1 WHERE owner = $2"
+        const createNewMessageQuery = "INSERT INTO groupie_p_chat(owner, notowner,notowner_imgurl, message) VALUES($1,$2,$3,$4)"
+
+        const addMessageFunction = async (owner:string,notOwner:string, addMessageToExisting:{} | [], newMessage:{}[]) => {
+             const addMessage = await  pool.query(addToExistingQuery, [JSON.stringify(addMessageToExisting), owner])
+             const createMessageBox = await pool.query(createNewMessageQuery, [owner, notOwner,"",  JSON.stringify(newMessage)])   
+        }
+
+        const message = async (checked:boolean) => {
+            return { sender: sender, text: text, checked: checked, time: time }
+        }
+        if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length === 0) {
+            const createOwnerMessageBox = await pool.query(createNewMessageQuery, [owner, notowner,"", JSON.stringify([{ sender: sender, text: text, checked: true, time: time }])]) 
+            const createNotOwnerMessageBox = await pool.query(createNewMessageQuery, [notowner, owner,"", JSON.stringify([{ sender: sender, text: text, checked: false, time: time }])])   
+        } else if (searchForOwnerMessageBox.rows.length > 0 && searchForNotOwnerMessageBox.rows.length === 0) {
+           addMessageFunction(owner, notowner, { sender: sender, text: text, checked: true, time: time }, [{ sender: sender, text: text, checked: false, time: time }])
+
+        } else if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length > 0) {
+            addMessageFunction(notowner, owner, { sender: sender, text: text, checked: false, time: time }, [{ sender: sender, text: text, checked: true, time: time }])
+            
+        } else if (searchForOwnerMessageBox.rows.length > 0  && searchForNotOwnerMessageBox.rows.length > 0  ) {
+            const addMessageOwner = await pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: true, time: time }), owner])
+            const addMessageNotForOwner = await pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: false, time: time }), notowner])
+        }
+         
+
+    } catch (error:any) {
+        console.log(error.message)
+    }
+
+}
 
 
 
