@@ -1,14 +1,14 @@
 
 
-import { Request, Response } from "express"
+import { Request, Response,} from "express"
 import {pool} from "../db"
-import { stringify } from "querystring"
+
 const brcypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 
  export const signup = async (req: Request, res: Response) => {
 
-     const  {username,password, img_url, about_me,post, following,followers, notification, state} = req.body
+     const  {username,password, img_url,background_img_url, about_me,post, following,followers, notification, state} = req.body
      try {
     //    Find if user exist
         const findUser = await pool.query("SELECT username FROM user_info WHERE username = $1", [username])
@@ -20,8 +20,8 @@ const jwt = require("jsonwebtoken")
             //hash the user password
              const hashedPasword = await brcypt.hash(password, 10)
             //  user db insertion
-             const registeringUserData = [username, hashedPasword, img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state]
-             const registerUser = await pool.query("INSERT INTO user_info(username, password, img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)", registeringUserData)
+             const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state]
+             const registerUser = await pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", registeringUserData)
             //  token creation
              const userToken = await jwt.sign({ userId: username }, process.env.TKN, { expiresIn: "7d" })
              res.send({status:true, client_Token:userToken, username:username})
@@ -133,7 +133,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
     const searchForUser = async (userId: string, lookedForUserUsername: string,) => {
         // A fuction that looks for both user
         
-        const lookForUserQuery = "SELECT id, username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
+        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
         
         const lookedForUser = await pool.query(lookForUserQuery, [userId, lookedForUserUsername])
         const searchLoggedInUserMessage = await pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1", [userId])
@@ -153,7 +153,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         const ifUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === userId)
         const ifOtherUser = await lookedForUser.rows.filter((name: { username: string }) => name.username === lookedForUserUsername)
 
-         const lookForAllUser = await pool.query("SELECT id, username, about_me, img_url FROM user_info")
+         const lookForAllUser = await pool.query("SELECT id, username, about_me, img_url, background_img_url FROM user_info")
        
         let ifUserFollowingFollowers:F = {following:[], followers:[] }
         let ifOtherUserFollowingFollowers: F = { following: [], followers: [] }
@@ -344,45 +344,24 @@ export const searchForUsers = async (req: Request, res: Response) => {
 }
 
 
-export const sendOrCreateMessageConnection = async (req:Request, res:Response) => {
-    try {
-        console.log(req.body)
-        const { owner, notowner, sender, text, time } = req.body
-        const searchForBothUsersQuery = "SELECT * FROM groupie_p_chat WHERE owner = $1 AND notowner = $2"
-        const searchForOwnerMessageBox = await pool.query(searchForBothUsersQuery, [owner, notowner])
-        const searchForNotOwnerMessageBox = await pool.query(searchForBothUsersQuery, [notowner, owner])
-        
-        const addToExistingQuery = "UPDATE groupie_p_chat SET message = message || $1 WHERE owner = $2"
-        const createNewMessageQuery = "INSERT INTO groupie_p_chat(owner, notowner,notowner_imgurl, message) VALUES($1,$2,$3,$4)"
-
-        const addMessageFunction = async (owner:string,notOwner:string, addMessageToExisting:{} | [], newMessage:{}[]) => {
-             const addMessage = await  pool.query(addToExistingQuery, [JSON.stringify(addMessageToExisting), owner])
-             const createMessageBox = await pool.query(createNewMessageQuery, [owner, notOwner,"",  JSON.stringify(newMessage)])   
-        }
-
-        const message = async (checked:boolean) => {
-            return { sender: sender, text: text, checked: checked, time: time }
-        }
-        if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length === 0) {
-            const createOwnerMessageBox = await pool.query(createNewMessageQuery, [owner, notowner,"", JSON.stringify([{ sender: sender, text: text, checked: true, time: time }])]) 
-            const createNotOwnerMessageBox = await pool.query(createNewMessageQuery, [notowner, owner,"", JSON.stringify([{ sender: sender, text: text, checked: false, time: time }])])   
-        } else if (searchForOwnerMessageBox.rows.length > 0 && searchForNotOwnerMessageBox.rows.length === 0) {
-           addMessageFunction(owner, notowner, { sender: sender, text: text, checked: true, time: time }, [{ sender: sender, text: text, checked: false, time: time }])
-
-        } else if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length > 0) {
-            addMessageFunction(notowner, owner, { sender: sender, text: text, checked: false, time: time }, [{ sender: sender, text: text, checked: true, time: time }])
-            
-        } else if (searchForOwnerMessageBox.rows.length > 0  && searchForNotOwnerMessageBox.rows.length > 0  ) {
-            const addMessageOwner = await pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: true, time: time }), owner])
-            const addMessageNotForOwner = await pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: false, time: time }), notowner])
-        }
-         
-
-    } catch (error:any) {
-        console.log(error.message)
-    }
-
+ export const userPost = (req: Request, res: Response) => {
+     const { username, postContent } = req.body
+     
+  
+         pool.query("UPDATE user_info SET post = post || $1 WHERe username = $2", [JSON.stringify(postContent),username]).then((result:any) => {
+                  res.status(200).send({message:"success", status:true})
+         }).catch((error: any) => {
+             res.status(404).send({message:"error", status:false})
+           console.log(error.message)
+       })
+     
+    
 }
+
+
+
+
+
 
 
 

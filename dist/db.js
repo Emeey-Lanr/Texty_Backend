@@ -5,7 +5,7 @@ const pg = require("pg").Pool;
 require("dotenv").config();
 exports.pool = new pg({
     user: process.env.PG_USER,
-    password: "**1234Lanr",
+    password: `${process.env.PG_DBPASS}`,
     host: process.env.PG_HOST,
     post: process.env.PG_PORT,
     database: process.env.PG_DATABASE

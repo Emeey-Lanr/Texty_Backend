@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendOrCreateMessageConnection = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const brcypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password, img_url, about_me, post, following, followers, notification, state } = req.body;
+    const { username, password, img_url, background_img_url, about_me, post, following, followers, notification, state } = req.body;
     try {
         //    Find if user exist
         const findUser = yield db_1.pool.query("SELECT username FROM user_info WHERE username = $1", [username]);
@@ -25,8 +25,8 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             //hash the user password
             const hashedPasword = yield brcypt.hash(password, 10);
             //  user db insertion
-            const registeringUserData = [username, hashedPasword, img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state];
-            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)", registeringUserData);
+            const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state];
+            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", registeringUserData);
             //  token creation
             const userToken = yield jwt.sign({ userId: username }, process.env.TKN, { expiresIn: "7d" });
             res.send({ status: true, client_Token: userToken, username: username });
@@ -92,7 +92,7 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     });
     const searchForUser = (userId, lookedForUserUsername) => __awaiter(void 0, void 0, void 0, function* () {
         // A fuction that looks for both user
-        const lookForUserQuery = "SELECT id, username, img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
+        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
         const lookedForUser = yield db_1.pool.query(lookForUserQuery, [userId, lookedForUserUsername]);
         const searchLoggedInUserMessage = yield db_1.pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1", [userId]);
         // This helps to get current user profile image for chat identification 
@@ -106,7 +106,7 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
         // If only one user is found is either the person search for or the person searching
         const ifUser = yield lookedForUser.rows.filter((name) => name.username === userId);
         const ifOtherUser = yield lookedForUser.rows.filter((name) => name.username === lookedForUserUsername);
-        const lookForAllUser = yield db_1.pool.query("SELECT id, username, about_me, img_url FROM user_info");
+        const lookForAllUser = yield db_1.pool.query("SELECT id, username, about_me, img_url, background_img_url FROM user_info");
         let ifUserFollowingFollowers = { following: [], followers: [] };
         let ifOtherUserFollowingFollowers = { following: [], followers: [] };
         let updateNotification = [];
@@ -254,42 +254,16 @@ const searchForUsers = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.searchForUsers = searchForUsers;
-const sendOrCreateMessageConnection = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        console.log(req.body);
-        const { owner, notowner, sender, text, time } = req.body;
-        const searchForBothUsersQuery = "SELECT * FROM groupie_p_chat WHERE owner = $1 AND notowner = $2";
-        const searchForOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [owner, notowner]);
-        const searchForNotOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [notowner, owner]);
-        const addToExistingQuery = "UPDATE groupie_p_chat SET message = message || $1 WHERE owner = $2";
-        const createNewMessageQuery = "INSERT INTO groupie_p_chat(owner, notowner,notowner_imgurl, message) VALUES($1,$2,$3,$4)";
-        const addMessageFunction = (owner, notOwner, addMessageToExisting, newMessage) => __awaiter(void 0, void 0, void 0, function* () {
-            const addMessage = yield db_1.pool.query(addToExistingQuery, [JSON.stringify(addMessageToExisting), owner]);
-            const createMessageBox = yield db_1.pool.query(createNewMessageQuery, [owner, notOwner, "", JSON.stringify(newMessage)]);
-        });
-        const message = (checked) => __awaiter(void 0, void 0, void 0, function* () {
-            return { sender: sender, text: text, checked: checked, time: time };
-        });
-        if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length === 0) {
-            const createOwnerMessageBox = yield db_1.pool.query(createNewMessageQuery, [owner, notowner, "", JSON.stringify([{ sender: sender, text: text, checked: true, time: time }])]);
-            const createNotOwnerMessageBox = yield db_1.pool.query(createNewMessageQuery, [notowner, owner, "", JSON.stringify([{ sender: sender, text: text, checked: false, time: time }])]);
-        }
-        else if (searchForOwnerMessageBox.rows.length > 0 && searchForNotOwnerMessageBox.rows.length === 0) {
-            addMessageFunction(owner, notowner, { sender: sender, text: text, checked: true, time: time }, [{ sender: sender, text: text, checked: false, time: time }]);
-        }
-        else if (searchForOwnerMessageBox.rows.length === 0 && searchForNotOwnerMessageBox.rows.length > 0) {
-            addMessageFunction(notowner, owner, { sender: sender, text: text, checked: false, time: time }, [{ sender: sender, text: text, checked: true, time: time }]);
-        }
-        else if (searchForOwnerMessageBox.rows.length > 0 && searchForNotOwnerMessageBox.rows.length > 0) {
-            const addMessageOwner = yield db_1.pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: true, time: time }), owner]);
-            const addMessageNotForOwner = yield db_1.pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: false, time: time }), notowner]);
-        }
-    }
-    catch (error) {
+const userPost = (req, res) => {
+    const { username, postContent } = req.body;
+    db_1.pool.query("UPDATE user_info SET post = post || $1 WHERe username = $2", [JSON.stringify(postContent), username]).then((result) => {
+        res.status(200).send({ message: "success", status: true });
+    }).catch((error) => {
+        res.status(404).send({ message: "error", status: false });
         console.log(error.message);
-    }
-});
-exports.sendOrCreateMessageConnection = sendOrCreateMessageConnection;
+    });
+};
+exports.userPost = userPost;
 // module.exports = {
 //     signup,
 //     signin

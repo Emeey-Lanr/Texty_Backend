@@ -1,45 +1,18 @@
-
-interface FollowFollowersDetails  {
-    username?: string;
-    img_url?: string ;
-    about_me?: string;
-}
-interface Notification {
-    followed: boolean;
-    checked: boolean;
-    notificationDetails: string;
-    username: string;
-    img_url:string,
-
-}
-interface ServerDatabase {
-    id:string,
-    username: string;
-    img_url: string;
-    about_me: string;
-    post: [];
-    following: FollowFollowersDetails[];
-    followers:FollowFollowersDetails [];
-    notification:Notification [];
-    state:string
-}
+import {ServerDatabase, ServerMessageInterface, POST, MessageInterface} from "./Interface"
 
 
- const serverDataBase: ServerDatabase[] = []
+export const serverDataBase: ServerDatabase[] = []
 
- interface MessageInterface {
-    time?: string;
-     text?: string;
-     checked?: boolean;
-    sender?: string;
+
+let serverMessageDataBase: ServerMessageInterface[] = []
+ 
+
+interface UserPost {
+    user: string;
+    post: POST[];
 }
-interface ServerMessageInterface {
-    owner:string;
-    notowner: string;
-    notowner_imgurl: string;
-    message:MessageInterface[];
-}
- let serverMessageDataBase: ServerMessageInterface[] = []
+
+const homePost:UserPost[] = []
  
 const ifUserExistOrViceVersa = (username:string,  serverId:number, details:ServerDatabase, secondDetails:ServerDatabase) => {
      serverDataBase.map((name, id) => {
@@ -119,6 +92,25 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
     
         console.log(serverDataBase, serverMessageDataBase)
 }
+
+
+export const addUserPostOrEmitPost = (user: string, post: []) => {
+    const userPostExist = serverDataBase.find((details) => details.username === user)
+    const userHomePostExist = homePost.find((details)=> details.user === user)
+    if (userPostExist) {
+      userPostExist.post = post  
+    } 
+    
+    if (!userHomePostExist) {
+        homePost.push({ user: user, post: [] })
+        return []
+    } else {
+        return userHomePostExist
+    }
+
+
+}
+
   
 // export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
     
@@ -220,5 +212,57 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
     // ownerMessage.message.push(incomingMessage)
     //  console.log(ownerMessage, notOwnerMessage)
      return serverMessageDataBase
+    
+}
+
+
+
+export const updatchecked = (owner:string, notowner:string) => {
+    const userCurrentMesage  = serverMessageDataBase.find((name)=> name.owner === owner && name.notowner === notowner)
+    userCurrentMesage?.message.map((data) => {
+        data.checked = true
+    })
+    console.log(userCurrentMesage?.message)
+}
+
+
+export const deleteMessage = (owner: string, notOwner:string) => {
+     console.log(owner, notOwner, "from socket controller")
+    // serverMessageDataBase = serverMessageDataBase.filter((details)=>details.owner !== owner && details.notowner !== notOwner  )
+
+}
+
+
+
+export const addAndEmitPost = (username:string, userPost:POST) => {
+    const findUserHomePost = homePost.find((details) => details.user === username)
+    
+    const userFollowers = serverDataBase.find((details) => details.username === username)
+    // we pushed into user home post
+    findUserHomePost?.post.push(userPost)
+
+    userFollowers?.post.push(userPost)
+    
+    const post = homePost.map((data) => {
+           userFollowers?.followers.map((details, id) => {
+               if (details.username === data.user) {
+          data.post.push(userPost)
+      }
+    })
+    }) 
+
+    console.log(findUserHomePost?.post, homePost)
+
+    return {followers:userFollowers?.followers, userHomePost:findUserHomePost, userPost:userFollowers?.post}
+    
+}
+
+const like = (user: string, postedBy: string, time: string) => {
+    // we search for the user that posted the post
+    const postedByUser = serverDataBase.find((details) => details.username === postedBy)
+    // we look for its post and the current post
+    const currentPost = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
+    // we push in the user that wants t
+    currentPost?.Likes?.push(user)
     
 }

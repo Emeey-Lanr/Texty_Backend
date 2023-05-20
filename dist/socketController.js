@@ -1,41 +1,42 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserInfoToServerDatabase = void 0;
-const serverDataBase = [];
+exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
+exports.serverDataBase = [];
 let serverMessageDataBase = [];
+const homePost = [];
 const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
-    serverDataBase.map((name, id) => {
+    exports.serverDataBase.map((name, id) => {
         if (name.username === username) {
             serverId = id;
         }
     });
-    serverDataBase[serverId] = details;
-    serverDataBase.push(secondDetails);
+    exports.serverDataBase[serverId] = details;
+    exports.serverDataBase.push(secondDetails);
 };
 const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername, loggedInUserDetails, userLookedForDetails, userAllMessage) => {
     if (userLookedForUsername === "") {
         let serverId = 0;
-        const checkifUserExist = serverDataBase.find((name) => name.username === userLoggedInUsername);
+        const checkifUserExist = exports.serverDataBase.find((name) => name.username === userLoggedInUsername);
         if (checkifUserExist) {
-            serverDataBase.map((name, id) => {
+            exports.serverDataBase.map((name, id) => {
                 if (name.username === checkifUserExist.username) {
                     serverId = id;
                 }
             });
-            serverDataBase[serverId] = loggedInUserDetails;
+            exports.serverDataBase[serverId] = loggedInUserDetails;
         }
         else {
-            serverDataBase.push(loggedInUserDetails);
+            exports.serverDataBase.push(loggedInUserDetails);
         }
     }
     else {
-        const checkifUserExist = serverDataBase.find((name) => name.username === userLoggedInUsername);
-        const checkifLookedForUserExist = serverDataBase.find((name) => name.username === userLookedForUsername);
+        const checkifUserExist = exports.serverDataBase.find((name) => name.username === userLoggedInUsername);
+        const checkifLookedForUserExist = exports.serverDataBase.find((name) => name.username === userLookedForUsername);
         let userId = 0;
         let lookedForUserId = 0;
         if (checkifUserExist && checkifLookedForUserExist) {
             // if both user exist already, we change the psql database info with the server database
-            serverDataBase.map((name, id) => {
+            exports.serverDataBase.map((name, id) => {
                 if (name.username === checkifUserExist.username) {
                     userId = id;
                 }
@@ -43,13 +44,13 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
                     lookedForUserId = id;
                 }
             });
-            serverDataBase[userId] = loggedInUserDetails;
-            serverDataBase[lookedForUserId] = userLookedForDetails;
+            exports.serverDataBase[userId] = loggedInUserDetails;
+            exports.serverDataBase[lookedForUserId] = userLookedForDetails;
             console.log("both user exist");
         }
         else if (!checkifUserExist && !checkifLookedForUserExist) {
             // if both don't exist we push in the psql databse into the server database array 
-            serverDataBase.push(loggedInUserDetails, userLookedForDetails);
+            exports.serverDataBase.push(loggedInUserDetails, userLookedForDetails);
             console.log("bot user don't exist");
         }
         else if (!checkifUserExist && checkifLookedForUserExist) {
@@ -74,15 +75,30 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
             serverMessageDataBase.push(details);
         }
     });
-    console.log(serverDataBase, serverMessageDataBase);
+    console.log(exports.serverDataBase, serverMessageDataBase);
 };
 exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
+const addUserPostOrEmitPost = (user, post) => {
+    const userPostExist = exports.serverDataBase.find((details) => details.username === user);
+    const userHomePostExist = homePost.find((details) => details.user === user);
+    if (userPostExist) {
+        userPostExist.post = post;
+    }
+    if (!userHomePostExist) {
+        homePost.push({ user: user, post: [] });
+        return [];
+    }
+    else {
+        return userHomePostExist;
+    }
+};
+exports.addUserPostOrEmitPost = addUserPostOrEmitPost;
 // export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
 //     // serverMessageDataBase.push()
 // }
 const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
-    const findLoggedInUser = serverDataBase.find((name) => name.username === userLoggedIn);
-    const findTheLookedForUser = serverDataBase.find((name) => name.username === userLookedFor);
+    const findLoggedInUser = exports.serverDataBase.find((name) => name.username === userLoggedIn);
+    const findTheLookedForUser = exports.serverDataBase.find((name) => name.username === userLookedFor);
     console.log(findLoggedInUser, findTheLookedForUser, "I'm working");
     // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
     let errorStatus = false;
@@ -121,8 +137,8 @@ const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
 };
 exports.followUser = followUser;
 const unfollowUser = (userLoggedInUserName, userTheyWantToUnfollow) => {
-    const userThatWantToUnfollowDetails = serverDataBase.find((details) => details.username === userLoggedInUserName);
-    const userTheyWantToUnfolllowDetails = serverDataBase.find((details) => details.username === userTheyWantToUnfollow);
+    const userThatWantToUnfollowDetails = exports.serverDataBase.find((details) => details.username === userLoggedInUserName);
+    const userTheyWantToUnfolllowDetails = exports.serverDataBase.find((details) => details.username === userTheyWantToUnfollow);
     // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
     console.log(userLoggedInUserName, userTheyWantToUnfollow, userThatWantToUnfollowDetails === null || userThatWantToUnfollowDetails === void 0 ? void 0 : userThatWantToUnfollowDetails.following, "user following");
     // let followingDetailsForUserThatWantsToUnfollow:FollowFollowersDetails[]  = []
@@ -164,3 +180,33 @@ const createMessageBoxOrSendMessage = (owner, notowner, owner_imgurl, notowner_i
     return serverMessageDataBase;
 };
 exports.createMessageBoxOrSendMessage = createMessageBoxOrSendMessage;
+const updatchecked = (owner, notowner) => {
+    const userCurrentMesage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner);
+    userCurrentMesage === null || userCurrentMesage === void 0 ? void 0 : userCurrentMesage.message.map((data) => {
+        data.checked = true;
+    });
+    console.log(userCurrentMesage === null || userCurrentMesage === void 0 ? void 0 : userCurrentMesage.message);
+};
+exports.updatchecked = updatchecked;
+const deleteMessage = (owner, notOwner) => {
+    console.log(owner, notOwner, "from socket controller");
+    // serverMessageDataBase = serverMessageDataBase.filter((details)=>details.owner !== owner && details.notowner !== notOwner  )
+};
+exports.deleteMessage = deleteMessage;
+const addAndEmitPost = (username, userPost) => {
+    const findUserHomePost = homePost.find((details) => details.user === username);
+    const userFollowers = exports.serverDataBase.find((details) => details.username === username);
+    // we pushed into user home post
+    findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post.push(userPost);
+    userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post.push(userPost);
+    const post = homePost.map((data) => {
+        userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers.map((details, id) => {
+            if (details.username === data.user) {
+                data.post.push(userPost);
+            }
+        });
+    });
+    console.log(findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post, homePost);
+    return { followers: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers, userHomePost: findUserHomePost, userPost: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post };
+};
+exports.addAndEmitPost = addAndEmitPost;

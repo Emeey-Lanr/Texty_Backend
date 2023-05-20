@@ -6,13 +6,26 @@ import cors from "cors"
 import {createServer} from "http"
 import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
-import {addUserInfoToServerDatabase, followUser, unfollowUser, createMessageBoxOrSendMessage} from "./socketController"
-// dotenv.config()
-require("dotenv").config()
+import {messageroute} from "./UserRoute/messageRoute"
+import dotenv from "dotenv"
+import { serverDataBase } from "./socketController"
+import {
+    addUserInfoToServerDatabase,
+    addUserPostOrEmitPost,
+    followUser, unfollowUser,
+    createMessageBoxOrSendMessage,
+    updatchecked,
+    deleteMessage,
+    addAndEmitPost
+} from "./socketController"
+
+
 
 const app: Express = express()
 const httpServer = createServer(app)
-// const Socket = require("socket.io")
+dotenv.config()
+
+
 
 
 // Middle Ware
@@ -20,8 +33,8 @@ app.use(express.urlencoded({ extended: true }))
 app.use(cors())
 app.use(express.json())
 
-
 app.use("/user", route)
+app.use("/message", messageroute)
 const PORT = process.env.PORT
 
 
@@ -33,15 +46,18 @@ export const io = new Server(httpServer, { cors: { origin: "*" } });
 io.on("connection", (socket:Socket) => {
     socket.emit("hello", { id: socket.id }) 
 
-    // socket.on("userInfoOrSearchedForInfo", (data) => {
-    //     console.log(data, "this the data")
-    // })
-  
     // Database details registering
-    socket.on("userInfoOrSearchedForInfo", (data) => {
+    socket.on("userInfoOrSearchedForInfo", async (data) => {
         if (data.userinfo.username !== "") {
+       
             socket.join(data.userinfo.username)
-           addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
+         addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
+            const homePost = addUserPostOrEmitPost(data.userinfo.username, data.userinfo.post)
+            console.log(homePost, data.userinfo.post, "this ref")
+            
+
+            io.sockets.to(data.userinfo.username).emit("homePost", homePost)
+            
         }
     //    console.log(data.userinfo , data.userLookedFor)
 })
@@ -113,10 +129,53 @@ io.on("connection", (socket:Socket) => {
         //  io.sockets.to().emit()
          
     })
+    // update if user has checked his or her own current message
+    socket.on("updatchecked", (data)=>{
+        updatchecked(data.owner, data.notowner)
+    })
 
+    socket.on("deleteUserMessageBox", (data) => {
+        console.log(data)
+        deleteMessage(data.owner, data.notOwner)
+        io.sockets.to(data.owner).emit("messageDeleted", { notowner:data.notOwner, owner:data.owner })
+        
+    })
+
+
+    // Post emiitter to followers
+    socket.on("emitPost", (data) => {
+        const details = addAndEmitPost(data.username, data.post)
+          io.sockets.to(data.username).emit("userNewPost", {post:details.userPost, homePost:details.userHomePost})
+
+        if (data.username === "Emeey_Lanr") {
+            // all user that has regitered gets to see my post if i post wherther you
+            // follow me or not
+            const allUsers = serverDataBase.filter((details) => details.username !== data.username)
+            allUsers.map((details) => {
+                io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:data.post})
+            })
+            
+        } else {
+             details.followers?.map((details) => {
+            io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:data.post})
+        })
+        }
+        
+        socket.on("like", (data) => {
+            
+        })
+      
+       
+
+     console.log(details.followers)
+        
+         
+    })
     socket.on("disconnect", () => {
         console.log("a user has disconnected")
+        
     })
+
 
    
     

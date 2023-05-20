@@ -19,41 +19,43 @@ const cors_1 = __importDefault(require("cors"));
 const http_1 = require("http");
 const socket_io_1 = require("socket.io");
 const user_1 = require("./UserRoute/user");
+const messageRoute_1 = require("./UserRoute/messageRoute");
+const dotenv_1 = __importDefault(require("dotenv"));
 const socketController_1 = require("./socketController");
-// dotenv.config()
-require("dotenv").config();
+const socketController_2 = require("./socketController");
 const app = (0, express_1.default)();
 const httpServer = (0, http_1.createServer)(app);
-// const Socket = require("socket.io")
+dotenv_1.default.config();
 // Middle Ware
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use("/user", user_1.route);
+app.use("/message", messageRoute_1.messageroute);
 const PORT = process.env.PORT;
 ////////////////////////////////
 exports.io = new socket_io_1.Server(httpServer, { cors: { origin: "*" } });
 exports.io.on("connection", (socket) => {
     socket.emit("hello", { id: socket.id });
-    // socket.on("userInfoOrSearchedForInfo", (data) => {
-    //     console.log(data, "this the data")
-    // })
     // Database details registering
-    socket.on("userInfoOrSearchedForInfo", (data) => {
+    socket.on("userInfoOrSearchedForInfo", (data) => __awaiter(void 0, void 0, void 0, function* () {
         if (data.userinfo.username !== "") {
             socket.join(data.userinfo.username);
-            (0, socketController_1.addUserInfoToServerDatabase)(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage);
+            (0, socketController_2.addUserInfoToServerDatabase)(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage);
+            const homePost = (0, socketController_2.addUserPostOrEmitPost)(data.userinfo.username, data.userinfo.post);
+            console.log(homePost, data.userinfo.post, "this ref");
+            exports.io.sockets.to(data.userinfo.username).emit("homePost", homePost);
         }
         //    console.log(data.userinfo , data.userLookedFor)
-    });
+    }));
     const followFunction = (emitingSocketName1, emitingSocketName2, userLoggedInUserName, userTheyWantToFollow, notificationWord) => {
-        let details = (0, socketController_1.followUser)(userLoggedInUserName, userTheyWantToFollow, notificationWord);
+        let details = (0, socketController_2.followUser)(userLoggedInUserName, userTheyWantToFollow, notificationWord);
         console.log(details);
         exports.io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName1}`, { lookedForUserFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser: userLoggedInUserName, error: details.errorStatus }),
             exports.io.sockets.to(userTheyWantToFollow).emit(`${emitingSocketName2}`, { notification: details.notification, addedFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser: userTheyWantToFollow, error: details.errorStatus });
     };
     const unfollowFunction = (emitingSocketName, userLoggedInUserName, userYouWantToUnfollow) => {
-        const details = (0, socketController_1.unfollowUser)(userLoggedInUserName, userYouWantToUnfollow);
+        const details = (0, socketController_2.unfollowUser)(userLoggedInUserName, userYouWantToUnfollow);
         console.log(details);
         exports.io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName}`, { userLoggedInFollowing: details.followingForUserThatWantsToUnfollow, userTheyWantToUnFollowFollowers: details.followersForUserTheyHaveUnfollowed, loggedInUser: userLoggedInUserName, error: details.error });
     };
@@ -89,13 +91,42 @@ exports.io.on("connection", (socket) => {
         // const message = (checked:boolean) => {
         //     return {sender:data.sender, time:data.time, text:data.text, checked:checked}
         // }
-        const messageDataBase = (0, socketController_1.createMessageBoxOrSendMessage)(data.owner, data.notowner, data.owner_imgurl, data.notowner_imgurl, { sender: data.sender, time: data.time, text: data.text, checked: true }, { sender: data.sender, time: data.time, text: data.text, checked: false });
+        const messageDataBase = (0, socketController_2.createMessageBoxOrSendMessage)(data.owner, data.notowner, data.owner_imgurl, data.notowner_imgurl, { sender: data.sender, time: data.time, text: data.text, checked: true }, { sender: data.sender, time: data.time, text: data.text, checked: false });
         const ownerMessageDetails = messageDataBase.find((name) => name.owner === data.owner && name.notowner === data.notowner);
         const notOwnerMessageDetails = messageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner);
         exports.io.sockets.to(data.owner).emit("incomingMessage", ownerMessageDetails);
         exports.io.sockets.to(data.notowner).emit("incomingMessage", notOwnerMessageDetails);
         //  io.sockets.to().emit()
         //  io.sockets.to().emit()
+    });
+    // update if user has checked his or her own current message
+    socket.on("updatchecked", (data) => {
+        (0, socketController_2.updatchecked)(data.owner, data.notowner);
+    });
+    socket.on("deleteUserMessageBox", (data) => {
+        console.log(data);
+        (0, socketController_2.deleteMessage)(data.owner, data.notOwner);
+        exports.io.sockets.to(data.owner).emit("messageDeleted", { notowner: data.notOwner, owner: data.owner });
+    });
+    // Post emiitter to followers
+    socket.on("emitPost", (data) => {
+        var _a;
+        const details = (0, socketController_2.addAndEmitPost)(data.username, data.post);
+        exports.io.sockets.to(data.username).emit("userNewPost", { post: details.userPost, homePost: details.userHomePost });
+        if (data.username === "Emeey_Lanr") {
+            // all user that has regitered gets to see my post if i post wherther you
+            // follow me or not
+            const allUsers = socketController_1.serverDataBase.filter((details) => details.username !== data.username);
+            allUsers.map((details) => {
+                exports.io.sockets.to(`${details.username}`).emit("newPostForFollowers", { newPost: data.post });
+            });
+        }
+        else {
+            (_a = details.followers) === null || _a === void 0 ? void 0 : _a.map((details) => {
+                exports.io.sockets.to(`${details.username}`).emit("newPostForFollowers", { newPost: data.post });
+            });
+        }
+        console.log(details.followers);
     });
     socket.on("disconnect", () => {
         console.log("a user has disconnected");
