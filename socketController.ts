@@ -103,7 +103,7 @@ export const addUserPostOrEmitPost = (user: string, post: []) => {
     
     if (!userHomePostExist) {
         homePost.push({ user: user, post: [] })
-        return []
+        return { user: user, post: [] }
     } else {
         return userHomePostExist
     }
@@ -257,12 +257,59 @@ export const addAndEmitPost = (username:string, userPost:POST) => {
     
 }
 
-const like = (user: string, postedBy: string, time: string) => {
+export const likeFunction = (user: string, postedBy: string, time: string) => {
     // we search for the user that posted the post
     const postedByUser = serverDataBase.find((details) => details.username === postedBy)
     // we look for its post and the current post
     const currentPost = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
     // we push in the user that wants t
-    currentPost?.Likes?.push(user)
+    currentPost?.likes?.push(user)
+
+    // we check everybody home post to see if a user has that same post 
+    homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                 details.likes = currentPost?.likes
+             }
+         })
+    })
     
+    console.log(postedByUser, currentPost, currentPost?.likes, "yea yea yea yea")
+   return currentPost?.likes
+}
+
+
+export const unlikeFunction = (user:string, postedBy: string, time: string) => {
+ 
+    const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
+
+    const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
+    
+    if (post) {
+        post.likes = post.likes?.filter((details) => details !== user)
+        //
+    } 
+    homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                 details.likes = post?.likes
+             }
+         })
+    })
+    
+    console.log(postedByUser, post?.likes, "you unliked this post")
+ 
+  return post?.likes 
+
+}
+
+export const commentFunction = (user:string, comment:string, img_url:string, commentTime:string, postedBy: string, time: string,) => {
+      const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
+    const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
+    if (post) {
+        post.comment?.push({ username: user, comment, img_url, time:commentTime})
+    }
+    
+
+    return post?.comment
 }

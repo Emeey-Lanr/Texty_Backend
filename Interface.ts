@@ -13,10 +13,11 @@ export interface Notification {
 
 }
 export interface COMMENT {
-    name: string,
-    text: string,
-    time: string,
-    date:string,
+    username: string,
+    comment: string,
+    img_url:string,
+    time?: string,
+    date?:string,
 }
 // interface LIKES {
     
@@ -28,7 +29,7 @@ export interface POST {
     postedBy?:string,
     img_url?: string,
     comment?: COMMENT[],
-    Likes?:string[],
+    likes?:string[],
  }
 export interface ServerDatabase {
     id:string,

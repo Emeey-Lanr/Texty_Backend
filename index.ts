@@ -16,7 +16,10 @@ import {
     createMessageBoxOrSendMessage,
     updatchecked,
     deleteMessage,
-    addAndEmitPost
+    addAndEmitPost,
+    likeFunction,
+    unlikeFunction,
+    commentFunction
 } from "./socketController"
 
 
@@ -144,6 +147,7 @@ io.on("connection", (socket:Socket) => {
 
     // Post emiitter to followers
     socket.on("emitPost", (data) => {
+        console.log(data, "na the data be this")
         const details = addAndEmitPost(data.username, data.post)
           io.sockets.to(data.username).emit("userNewPost", {post:details.userPost, homePost:details.userHomePost})
 
@@ -160,19 +164,70 @@ io.on("connection", (socket:Socket) => {
             io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:data.post})
         })
         }
-        
-        socket.on("like", (data) => {
-            
-        })
       
+       
        
 
      console.log(details.followers)
         
          
     })
+    const likeUnlikeCommentFunction = (user: string, comment:string, img_url:string, commentTime:string, postedBy: string, time: string, state: string, socketName1:string, socketName2:string) => {
+        let detailsBox:any = []
+        if (state === "like") {
+             detailsBox = likeFunction(user, postedBy, time)
+        } else if(state === "unlike") {
+            detailsBox = unlikeFunction(user, postedBy, time)
+        } else if(state === "comment") {
+            detailsBox = commentFunction(user, comment, img_url, commentTime, postedBy, time)
+        }
+             
+
+
+            console.log(detailsBox)
+            // this goes to the current user 
+            io.sockets.to(user).emit(socketName1, { likes: detailsBox,  postedBy: postedBy, time:time})
+            
+
+            const allUsers = serverDataBase.filter((details) => details.username !== postedBy)
+            const postedByUserFollower = serverDataBase.find((details) => details.username == postedBy)
+            
+            // // this is meant of the other users that follows or alll user for emeey lanr
+            if (postedBy === "Emeey_Lanr") {
+                io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox,  postedBy: postedBy, time:time})
+             allUsers.map((details) => {
+                io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time})
+            })
+            } else {
+                // but if not emeey lanr we know only those following the user have the post
+                postedByUserFollower?.followers.map((details) => {
+                    io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time})  
+                })
+                
+            }
+        }
+     socket.on("like", (data) => {
+            console.log("we are here")
+            likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
+           
+            
+        })
+       
+    socket.on("unlike", (data) => {
+       
+         likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
+        // likeGeneralFunction(data.user, data.)
+    })
+    socket.on("comment", (data) => {
+         likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
+        
+    })
+   
+    
+      
     socket.on("disconnect", () => {
         console.log("a user has disconnected")
+       
         
     })
 

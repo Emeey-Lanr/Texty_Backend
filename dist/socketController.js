@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
+exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
 const homePost = [];
@@ -86,7 +86,7 @@ const addUserPostOrEmitPost = (user, post) => {
     }
     if (!userHomePostExist) {
         homePost.push({ user: user, post: [] });
-        return [];
+        return { user: user, post: [] };
     }
     else {
         return userHomePostExist;
@@ -210,3 +210,52 @@ const addAndEmitPost = (username, userPost) => {
     return { followers: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers, userHomePost: findUserHomePost, userPost: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post };
 };
 exports.addAndEmitPost = addAndEmitPost;
+const likeFunction = (user, postedBy, time) => {
+    var _a;
+    // we search for the user that posted the post
+    const postedByUser = exports.serverDataBase.find((details) => details.username === postedBy);
+    // we look for its post and the current post
+    const currentPost = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+    // we push in the user that wants t
+    (_a = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes) === null || _a === void 0 ? void 0 : _a.push(user);
+    // we check everybody home post to see if a user has that same post 
+    homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                details.likes = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
+            }
+        });
+    });
+    console.log(postedByUser, currentPost, currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes, "yea yea yea yea");
+    return currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
+};
+exports.likeFunction = likeFunction;
+const unlikeFunction = (user, postedBy, time) => {
+    var _a;
+    const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
+    const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+    if (post) {
+        post.likes = (_a = post.likes) === null || _a === void 0 ? void 0 : _a.filter((details) => details !== user);
+        //
+    }
+    homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                details.likes = post === null || post === void 0 ? void 0 : post.likes;
+            }
+        });
+    });
+    console.log(postedByUser, post === null || post === void 0 ? void 0 : post.likes, "you unliked this post");
+    return post === null || post === void 0 ? void 0 : post.likes;
+};
+exports.unlikeFunction = unlikeFunction;
+const commentFunction = (user, comment, img_url, commentTime, postedBy, time) => {
+    var _a;
+    const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
+    const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+    if (post) {
+        (_a = post.comment) === null || _a === void 0 ? void 0 : _a.push({ username: user, comment, img_url, time: commentTime });
+    }
+    return post === null || post === void 0 ? void 0 : post.comment;
+};
+exports.commentFunction = commentFunction;

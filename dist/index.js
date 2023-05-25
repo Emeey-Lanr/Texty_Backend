@@ -111,6 +111,7 @@ exports.io.on("connection", (socket) => {
     // Post emiitter to followers
     socket.on("emitPost", (data) => {
         var _a;
+        console.log(data, "na the data be this");
         const details = (0, socketController_2.addAndEmitPost)(data.username, data.post);
         exports.io.sockets.to(data.username).emit("userNewPost", { post: details.userPost, homePost: details.userHomePost });
         if (data.username === "Emeey_Lanr") {
@@ -127,6 +128,47 @@ exports.io.on("connection", (socket) => {
             });
         }
         console.log(details.followers);
+    });
+    const likeUnlikeCommentFunction = (user, comment, img_url, commentTime, postedBy, time, state, socketName1, socketName2) => {
+        let detailsBox = [];
+        if (state === "like") {
+            detailsBox = (0, socketController_2.likeFunction)(user, postedBy, time);
+        }
+        else if (state === "unlike") {
+            detailsBox = (0, socketController_2.unlikeFunction)(user, postedBy, time);
+        }
+        else if (state === "comment") {
+            detailsBox = (0, socketController_2.commentFunction)(user, comment, img_url, commentTime, postedBy, time);
+        }
+        console.log(detailsBox);
+        // this goes to the current user 
+        exports.io.sockets.to(user).emit(socketName1, { likes: detailsBox, postedBy: postedBy, time: time });
+        const allUsers = socketController_1.serverDataBase.filter((details) => details.username !== postedBy);
+        const postedByUserFollower = socketController_1.serverDataBase.find((details) => details.username == postedBy);
+        // // this is meant of the other users that follows or alll user for emeey lanr
+        if (postedBy === "Emeey_Lanr") {
+            exports.io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox, postedBy: postedBy, time: time });
+            allUsers.map((details) => {
+                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time });
+            });
+        }
+        else {
+            // but if not emeey lanr we know only those following the user have the post
+            postedByUserFollower === null || postedByUserFollower === void 0 ? void 0 : postedByUserFollower.followers.map((details) => {
+                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time });
+            });
+        }
+    };
+    socket.on("like", (data) => {
+        console.log("we are here");
+        likeUnlikeCommentFunction(data.user, "", "", "", data.postedBy, data.time, data.state, "likeOrUnlike1", "likeOrUnlike2");
+    });
+    socket.on("unlike", (data) => {
+        likeUnlikeCommentFunction(data.user, "", "", "", data.postedBy, data.time, data.state, "likeOrUnlike1", "likeOrUnlike2");
+        // likeGeneralFunction(data.user, data.)
+    });
+    socket.on("comment", (data) => {
+        likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2");
     });
     socket.on("disconnect", () => {
         console.log("a user has disconnected");
