@@ -19,7 +19,9 @@ import {
     addAndEmitPost,
     likeFunction,
     unlikeFunction,
-    commentFunction
+    commentFunction,
+    blockUserFunction,
+    unblockFuction,
 } from "./socketController"
 
 
@@ -221,6 +223,27 @@ io.on("connection", (socket:Socket) => {
     socket.on("comment", (data) => {
          likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
         
+    })
+    socket.on("blockUser", (data) => {
+        console.log(data, "you are blocked")
+   const blockDetails = blockUserFunction(data.userLoggedIn, data.userToBeBlocked)
+     io.sockets.to(data.userLoggedIn).emit("blocked", {details:blockDetails.userBlocked})    
+
+    })
+
+    socket.on("unblockUser", (data) => {
+        console.log(data, "you've been unblocked")
+           const unblockDetails = unblockFuction(data.userLoggedIn, data.userToBeBlocked)
+     io.sockets.to(data.userLoggedIn).emit("unblocked", {details:unblockDetails.userBlocked})   
+    })
+    // blocking and unblocking via profile
+    socket.on("blockVP", (data) => {
+        const blockDetails = blockUserFunction(data.user, data.userToBeUnblocked)
+        io.sockets.to(data.user).emit("blockedVP", {userDetails:blockDetails.userBlocked, userBlockedDetails:blockDetails.otherUserBlockedDetails, userBlockedUsername:data.userToBeUnblocked})
+    })
+    socket.on("unblockVP", (data) => {
+        const unblockDetails = unblockFuction(data.user, data.userToBeUnblocked)
+        io.sockets.to(data.user).emit("unblockedVP",{userDetails:unblockDetails.userBlocked, userBlockedDetails:unblockDetails.userToBeUnBlockedBlockedDetails, userBlockedUsername:data.userToBeUnblocked} )
     })
    
     

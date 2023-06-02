@@ -16,11 +16,11 @@ const sendOrCreateMessageConnection = (req, res) => __awaiter(void 0, void 0, vo
         console.log(req.body);
         const { owner, notowner, sender, text, time } = req.body;
         console.log(owner, notowner);
-        const searchForBothUsersQuery = "SELECT * FROM groupie_p_chat WHERE owner = $1 AND notowner = $2";
+        const searchForBothUsersQuery = "SELECT * FROM texty_p_chat WHERE owner = $1 AND notowner = $2";
         const searchForOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [owner, notowner]);
         const searchForNotOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [notowner, owner]);
-        const addToExistingQuery = "UPDATE groupie_p_chat SET message = message || $1 WHERE owner = $2";
-        const createNewMessageQuery = "INSERT INTO groupie_p_chat(owner, notowner,notowner_imgurl, message) VALUES($1,$2,$3,$4)";
+        const addToExistingQuery = "UPDATE texty_p_chat SET message = message || $1 WHERE owner = $2";
+        const createNewMessageQuery = "INSERT INTO texty_p_chat(owner, notowner,notowner_imgurl, message) VALUES($1,$2,$3,$4)";
         const addMessageFunction = (user1, user2, addUser, checked1, checked2) => __awaiter(void 0, void 0, void 0, function* () {
             // let = { sender: sender, text: text, checked: false, time: time }
             const addMessage = yield db_1.pool.query(addToExistingQuery, [JSON.stringify({ sender: sender, text: text, checked: checked1, time: time }), addUser]);
@@ -56,12 +56,12 @@ exports.sendOrCreateMessageConnection = sendOrCreateMessageConnection;
 const updatechecked = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { owner, notowner } = req.body;
-        const getUserCurrentMeessage = yield db_1.pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1 AND notowner = $2", [owner, notowner]);
+        const getUserCurrentMeessage = yield db_1.pool.query("SELECT * FROM texty_p_chat WHERE owner = $1 AND notowner = $2", [owner, notowner]);
         const change = yield getUserCurrentMeessage.rows[0].message.map((data) => {
             data.checked = true;
         });
         console.log(change, "na me", getUserCurrentMeessage.rows[0].message);
-        const updatechecked = yield db_1.pool.query("UPDATE groupie_p_chat SET message = $1 where owner = $2 AND notowner = $3", [JSON.stringify(getUserCurrentMeessage.rows[0].message), owner, notowner]);
+        const updatechecked = yield db_1.pool.query("UPDATE texty_p_chat SET message = $1 where owner = $2 AND notowner = $3", [JSON.stringify(getUserCurrentMeessage.rows[0].message), owner, notowner]);
     }
     catch (error) {
         console.log(error.message);
@@ -72,7 +72,7 @@ const deleteMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     try {
         const { owner, notOwner } = req.body;
         console.log(owner, notOwner, "from message controller");
-        const messageBox = yield db_1.pool.query("DELETE FROM groupie_p_chat WHERE owner = $1 AND notowner = $2", [owner, notOwner]);
+        const messageBox = yield db_1.pool.query("DELETE FROM texty_p_chat WHERE owner = $1 AND notowner = $2", [owner, notOwner]);
     }
     catch (error) {
         console.log(error.message);

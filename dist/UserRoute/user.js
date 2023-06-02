@@ -14,4 +14,8 @@ exports.route.post("/followUser", userController_1.followerUser);
 exports.route.post("/unfollowUser", userController_1.unfollowUser);
 exports.route.post("/search", userController_1.searchForUsers);
 exports.route.post("/createPost", userController_1.userPost);
+exports.route.put("/updateAboutMe", userController_1.updateAboutMe);
+exports.route.put("/blockUser", userController_1.blockUser);
+exports.route.put("/unBlockUser", userController_1.unblockUser);
+exports.route.put("/deleteAccount", userController_1.deleteAccount);
 // export route

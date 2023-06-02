@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
+exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
 const homePost = [];
@@ -259,3 +259,26 @@ const commentFunction = (user, comment, img_url, commentTime, postedBy, time) =>
     return post === null || post === void 0 ? void 0 : post.comment;
 };
 exports.commentFunction = commentFunction;
+const blockUserFunction = (userLoggedIn, userToBeBlocked) => {
+    // find the user logged in and blocked box
+    const user = exports.serverDataBase.find((details) => details.username === userLoggedIn);
+    const userToBeBlockedDetails = exports.serverDataBase.find((details) => details.username === userToBeBlocked);
+    // this is to check whether user has been added to the block list already
+    // to prevent double pushing
+    let check = user === null || user === void 0 ? void 0 : user.blocked.find((details) => details.username === userToBeBlocked);
+    if (!check) {
+        user === null || user === void 0 ? void 0 : user.blocked.push({ username: userToBeBlocked });
+    }
+    return { userBlocked: user === null || user === void 0 ? void 0 : user.blocked, otherUserBlockedDetails: userToBeBlockedDetails === null || userToBeBlockedDetails === void 0 ? void 0 : userToBeBlockedDetails.blocked };
+};
+exports.blockUserFunction = blockUserFunction;
+const unblockFuction = (userLoggedIn, userToBeUnBlocked) => {
+    // find the user logged in and blocked box
+    const user = exports.serverDataBase.find((details) => details.username === userLoggedIn);
+    const userToBeUnBlockedDetails = exports.serverDataBase.find((details) => details.username === userToBeUnBlocked);
+    if (user) {
+        user.blocked = user === null || user === void 0 ? void 0 : user.blocked.filter((details) => details.username !== userToBeUnBlocked);
+    }
+    return { userBlocked: user === null || user === void 0 ? void 0 : user.blocked, userToBeUnBlockedBlockedDetails: userToBeUnBlockedDetails === null || userToBeUnBlockedDetails === void 0 ? void 0 : userToBeUnBlockedDetails.blocked };
+};
+exports.unblockFuction = unblockFuction;

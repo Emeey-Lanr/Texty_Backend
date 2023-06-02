@@ -9,12 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const brcypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password, img_url, background_img_url, about_me, post, following, followers, notification, state } = req.body;
+    const { username, password, img_url, background_img_url, about_me, post, following, followers, notification, blocked, state } = req.body;
     try {
         //    Find if user exist
         const findUser = yield db_1.pool.query("SELECT username FROM user_info WHERE username = $1", [username]);
@@ -25,8 +25,8 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             //hash the user password
             const hashedPasword = yield brcypt.hash(password, 10);
             //  user db insertion
-            const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state];
-            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", registeringUserData);
+            const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), JSON.stringify(blocked), state];
+            const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,blocked,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)", registeringUserData);
             //  token creation
             const userToken = yield jwt.sign({ userId: username }, process.env.TKN, { expiresIn: "7d" });
             res.send({ status: true, client_Token: userToken, username: username });
@@ -71,6 +71,7 @@ const userDataObject = {
     following: [],
     followers: [],
     notification: [],
+    blocked: [],
     state: ""
 };
 const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -92,9 +93,9 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
     });
     const searchForUser = (userId, lookedForUserUsername) => __awaiter(void 0, void 0, void 0, function* () {
         // A fuction that looks for both user
-        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)";
+        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info WHERE username IN ($1, $2)";
         const lookedForUser = yield db_1.pool.query(lookForUserQuery, [userId, lookedForUserUsername]);
-        const searchLoggedInUserMessage = yield db_1.pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1", [userId]);
+        const searchLoggedInUserMessage = yield db_1.pool.query("SELECT * FROM texty_p_chat WHERE owner = $1", [userId]);
         // This helps to get current user profile image for chat identification 
         const addImages = lookedForUser.rows.map((name) => {
             searchLoggedInUserMessage.rows.map((namee) => {
@@ -256,7 +257,7 @@ const searchForUsers = (req, res) => __awaiter(void 0, void 0, void 0, function*
 exports.searchForUsers = searchForUsers;
 const userPost = (req, res) => {
     const { username, postContent } = req.body;
-    db_1.pool.query("UPDATE user_info SET post = post || $1 WHERe username = $2", [JSON.stringify(postContent), username]).then((result) => {
+    db_1.pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent), username]).then((result) => {
         res.status(200).send({ message: "success", status: true });
     }).catch((error) => {
         res.status(404).send({ message: "error", status: false });
@@ -264,6 +265,62 @@ const userPost = (req, res) => {
     });
 };
 exports.userPost = userPost;
+const updateAboutMe = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, aboutme } = req.body;
+    try {
+        const aboutMeUpdateQuery = yield db_1.pool.query("UPDATE user_info SET about_me = $1 WHERE username = $2", [aboutme, username]);
+        console.log(aboutMeUpdateQuery);
+        res.status(200).send({ message: "updated succefully", status: true });
+    }
+    catch (error) {
+        res.status(404).send({ message: "an error occured", status: false });
+    }
+});
+exports.updateAboutMe = updateAboutMe;
+const blockUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { userLoggedIn, userToBeBlocked } = req.body;
+        const blockUser = yield db_1.pool.query("UPDATE user_info SET blocked = blocked || $1 WHERE username = $2", [JSON.stringify({ username: userToBeBlocked }), userLoggedIn]);
+        res.status(200).send({ message: "blocked successfully", status: true });
+    }
+    catch (error) {
+        res.status(404).send({ message: error.message, status: false });
+    }
+});
+exports.blockUser = blockUser;
+const unblockUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { userLoggedIn, userToBeBlocked } = req.body;
+        const queryString = "UPDATE user_info SET blocked = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(blocked) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND blocked @> $3";
+        const activateQuery = yield db_1.pool.query(queryString, [userToBeBlocked, userLoggedIn, JSON.stringify([{ username: userToBeBlocked }])]);
+    }
+    catch (error) {
+        console.log(error.message);
+    }
+});
+exports.unblockUser = unblockUser;
+const deleteAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log(req.body);
+        const { password, username } = req.body;
+        const user = yield db_1.pool.query("SELECT password FROM user_info WHERE username = $1", [username]);
+        const comparePassword = yield brcypt.compare(password, user.rows[0].password);
+        console.log(comparePassword);
+        if (comparePassword) {
+            const deleteUser = yield db_1.pool.query("DELETE FROM user_info WHERE username = $1", [username]);
+            const deleteMessage = yield db_1.pool.query("DELETE FROM texty_p_chat WHERE owner = $1", [username]);
+            res.status(200).send({ status: true, message: "account details deleted succesfully" });
+        }
+        else {
+            console.log("incorrect password");
+            res.status(404).send({ status: false, message: "Incorrect password" });
+        }
+    }
+    catch (error) {
+        console.log(error);
+    }
+});
+exports.deleteAccount = deleteAccount;
 // module.exports = {
 //     signup,
 //     signin

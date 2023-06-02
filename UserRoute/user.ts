@@ -1,6 +1,18 @@
 import express from "express"
 export const route = express.Router()
-import {signup, signin, verifyUserProfile, followerUser, unfollowUser, searchForUsers, userPost} from "../UserController/userController"
+import {
+    signup,
+    signin,
+    verifyUserProfile,
+    followerUser,
+    unfollowUser,
+    searchForUsers,
+    userPost,
+    updateAboutMe,
+    blockUser,
+    unblockUser,
+    deleteAccount
+} from "../UserController/userController"
 
 route.post("/signup", signup)
 route.post("/signin", signin)
@@ -9,6 +21,10 @@ route.post("/followUser", followerUser)
 route.post("/unfollowUser", unfollowUser)
 route.post("/search", searchForUsers)
 route.post("/createPost", userPost)
+route.put("/updateAboutMe", updateAboutMe)
+route.put("/blockUser", blockUser)
+route.put("/unBlockUser", unblockUser)
+route.put("/deleteAccount", deleteAccount)
 
 
 

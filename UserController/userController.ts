@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken")
 
  export const signup = async (req: Request, res: Response) => {
 
-     const  {username,password, img_url,background_img_url, about_me,post, following,followers, notification, state} = req.body
+     const  {username,password, img_url,background_img_url, about_me,post, following,followers, notification, blocked, state} = req.body
      try {
     //    Find if user exist
         const findUser = await pool.query("SELECT username FROM user_info WHERE username = $1", [username])
@@ -20,8 +20,8 @@ const jwt = require("jsonwebtoken")
             //hash the user password
              const hashedPasword = await brcypt.hash(password, 10)
             //  user db insertion
-             const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), state]
-             const registerUser = await pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)", registeringUserData)
+             const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), JSON.stringify(blocked), state]
+             const registerUser = await pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,blocked,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)", registeringUserData)
             //  token creation
              const userToken = await jwt.sign({ userId: username }, process.env.TKN, { expiresIn: "7d" })
              res.send({status:true, client_Token:userToken, username:username})
@@ -74,6 +74,7 @@ interface userData {
     following: [];
     followers: [];
     notification: [];
+    blocked: [];
    state:string
     
 }
@@ -84,7 +85,8 @@ const userDataObject:userData = {
     post:[],
     following: [],
     followers: [],
-  notification:[],
+    notification: [],
+    blocked:[],
 state:""
 }
   interface Details {
@@ -133,10 +135,10 @@ export const verifyUserProfile = async (req: any, res: Response) => {
     const searchForUser = async (userId: string, lookedForUserUsername: string,) => {
         // A fuction that looks for both user
         
-        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification, state FROM user_info WHERE username IN ($1, $2)"
+        const lookForUserQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info WHERE username IN ($1, $2)"
         
         const lookedForUser = await pool.query(lookForUserQuery, [userId, lookedForUserUsername])
-        const searchLoggedInUserMessage = await pool.query("SELECT * FROM groupie_p_chat WHERE owner = $1", [userId])
+        const searchLoggedInUserMessage = await pool.query("SELECT * FROM texty_p_chat WHERE owner = $1", [userId])
         // This helps to get current user profile image for chat identification 
         const addImages =  lookedForUser.rows.map((name: { username: string, img_url:string }) => {
             searchLoggedInUserMessage.rows.map((namee: { notowner: string, notowner_imgurl: string }) => {
@@ -348,7 +350,7 @@ export const searchForUsers = async (req: Request, res: Response) => {
      const { username, postContent } = req.body
      
   
-         pool.query("UPDATE user_info SET post = post || $1 WHERe username = $2", [JSON.stringify(postContent),username]).then((result:any) => {
+         pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent),username]).then((result:any) => {
                   res.status(200).send({message:"success", status:true})
          }).catch((error: any) => {
              res.status(404).send({message:"error", status:false})
@@ -359,6 +361,58 @@ export const searchForUsers = async (req: Request, res: Response) => {
 }
 
 
+export const updateAboutMe = async (req: Request, res: Response) => {
+    const {username, aboutme } = req.body
+    try {
+        const aboutMeUpdateQuery = await pool.query("UPDATE user_info SET about_me = $1 WHERE username = $2", [aboutme, username])
+        console.log(aboutMeUpdateQuery)
+     res.status(200).send({message:"updated succefully", status:true})
+    } catch (error: any) {
+        res.status(404).send({message:"an error occured", status:false})
+       
+    }
+}
+
+export const blockUser = async(req: Request, res: Response) => {
+    try {
+        const {userLoggedIn, userToBeBlocked} = req.body
+        const blockUser = await pool.query("UPDATE user_info SET blocked = blocked || $1 WHERE username = $2", [JSON.stringify({ username: userToBeBlocked }), userLoggedIn])
+        res.status(200).send({ message: "blocked successfully", status: true })
+    } catch (error:any) {
+        res.status(404).send({message:error.message, status:false})
+    }
+}
+
+export const unblockUser = async (req: Request, res: Response) => {
+    try {
+        const {userLoggedIn, userToBeBlocked} = req.body
+        const queryString = "UPDATE user_info SET blocked = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(blocked) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND blocked @> $3"
+         const activateQuery = await pool.query(queryString, [userToBeBlocked, userLoggedIn, JSON.stringify([{username:userToBeBlocked}]) ])
+    } catch (error:any) {
+     console.log(error.message)   
+    }
+    
+}
+
+export const deleteAccount = async (req:Request, res:Response) => {
+    try {
+    console.log(req.body)
+        const {password, username} = req.body
+        const user = await pool.query("SELECT password FROM user_info WHERE username = $1", [username])
+        const comparePassword = await brcypt.compare(password, user.rows[0].password)
+       console.log(comparePassword)
+        if (comparePassword) {
+            const deleteUser = await pool.query("DELETE FROM user_info WHERE username = $1", [username])
+            const deleteMessage = await pool.query("DELETE FROM texty_p_chat WHERE owner = $1", [username])
+            res.status(200).send({status:true, message:"account details deleted succesfully"})
+        } else {
+            console.log("incorrect password")
+            res.status(404).send({status:false, message:"Incorrect password"})
+        }
+    } catch (error) {
+        console.log(error)
+    }
+}
 
 
 

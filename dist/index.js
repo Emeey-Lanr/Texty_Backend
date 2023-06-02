@@ -170,6 +170,25 @@ exports.io.on("connection", (socket) => {
     socket.on("comment", (data) => {
         likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2");
     });
+    socket.on("blockUser", (data) => {
+        console.log(data, "you are blocked");
+        const blockDetails = (0, socketController_2.blockUserFunction)(data.userLoggedIn, data.userToBeBlocked);
+        exports.io.sockets.to(data.userLoggedIn).emit("blocked", { details: blockDetails.userBlocked });
+    });
+    socket.on("unblockUser", (data) => {
+        console.log(data, "you've been unblocked");
+        const unblockDetails = (0, socketController_2.unblockFuction)(data.userLoggedIn, data.userToBeBlocked);
+        exports.io.sockets.to(data.userLoggedIn).emit("unblocked", { details: unblockDetails.userBlocked });
+    });
+    // blocking and unblocking via profile
+    socket.on("blockVP", (data) => {
+        const blockDetails = (0, socketController_2.blockUserFunction)(data.user, data.userToBeUnblocked);
+        exports.io.sockets.to(data.user).emit("blockedVP", { userDetails: blockDetails.userBlocked, userBlockedDetails: blockDetails.otherUserBlockedDetails, userBlockedUsername: data.userToBeUnblocked });
+    });
+    socket.on("unblockVP", (data) => {
+        const unblockDetails = (0, socketController_2.unblockFuction)(data.user, data.userToBeUnblocked);
+        exports.io.sockets.to(data.user).emit("unblockedVP", { userDetails: unblockDetails.userBlocked, userBlockedDetails: unblockDetails.userToBeUnBlockedBlockedDetails, userBlockedUsername: data.userToBeUnblocked });
+    });
     socket.on("disconnect", () => {
         console.log("a user has disconnected");
     });

@@ -30,7 +30,11 @@ export interface POST {
     img_url?: string,
     comment?: COMMENT[],
     likes?:string[],
- }
+}
+ 
+export interface BLOCKED {
+    username:string
+}
 export interface ServerDatabase {
     id:string,
     username: string;
@@ -40,6 +44,7 @@ export interface ServerDatabase {
     following: FollowFollowersDetails[];
     followers:FollowFollowersDetails [];
     notification:Notification [];
+    blocked:BLOCKED[]
     state:string
 }
 

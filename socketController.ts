@@ -313,3 +313,30 @@ export const commentFunction = (user:string, comment:string, img_url:string, com
 
     return post?.comment
 }
+
+export const blockUserFunction = (userLoggedIn: string, userToBeBlocked: string) => {
+    // find the user logged in and blocked box
+    const user = serverDataBase.find((details) => details.username === userLoggedIn)
+    const userToBeBlockedDetails = serverDataBase.find((details)=>details.username === userToBeBlocked)
+    // this is to check whether user has been added to the block list already
+    // to prevent double pushing
+    let check = user?.blocked.find((details) => details.username === userToBeBlocked)
+    if (!check) {
+         user?.blocked.push({username:userToBeBlocked})
+    }
+   
+    return { userBlocked: user?.blocked, otherUserBlockedDetails: userToBeBlockedDetails?.blocked }
+    
+}
+
+export const unblockFuction = (userLoggedIn: string, userToBeUnBlocked: string) => {
+        // find the user logged in and blocked box
+    const user = serverDataBase.find((details) => details.username === userLoggedIn)
+    const userToBeUnBlockedDetails = serverDataBase.find((details)=>details.username === userToBeUnBlocked)
+    if (user) {
+        user.blocked = user?.blocked.filter((details) => details.username !== userToBeUnBlocked)
+    }
+    
+    return { userBlocked: user?.blocked, userToBeUnBlockedBlockedDetails:userToBeUnBlockedDetails?.blocked}
+    
+}
