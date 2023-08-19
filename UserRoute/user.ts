@@ -8,6 +8,8 @@ import {
     unfollowUser,
     searchForUsers,
     userPost,
+    deletePost,
+    updateBackgroundProfileImage,
     updateAboutMe,
     blockUser,
     unblockUser,
@@ -21,10 +23,13 @@ route.post("/followUser", followerUser)
 route.post("/unfollowUser", unfollowUser)
 route.post("/search", searchForUsers)
 route.post("/createPost", userPost)
+route.put("/updateImg", updateBackgroundProfileImage)
 route.put("/updateAboutMe", updateAboutMe)
 route.put("/blockUser", blockUser)
 route.put("/unBlockUser", unblockUser)
 route.put("/deleteAccount", deleteAccount)
+route.put("/deletePost", deletePost)
+
 
 
 

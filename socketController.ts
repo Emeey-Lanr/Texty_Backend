@@ -19,8 +19,10 @@ const ifUserExistOrViceVersa = (username:string,  serverId:number, details:Serve
                     if (name.username === username) {
                         serverId = id
                     }
-                 })
-              serverDataBase[serverId] = details
+     })
+           const post =  serverDataBase[serverId].post 
+        serverDataBase[serverId] = details
+       serverDataBase[serverId].post = post
              serverDataBase.push(secondDetails)
 }
 
@@ -34,8 +36,9 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
                          serverId = id
                      }
                 })
-                
-                serverDataBase[serverId] =  loggedInUserDetails
+                 const userPost = serverDataBase[serverId].post
+                serverDataBase[serverId] = loggedInUserDetails
+                serverDataBase[serverId].post = userPost
             } else {
                 serverDataBase.push(loggedInUserDetails)
                  
@@ -56,24 +59,29 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
                         lookedForUserId = id
                     }
                 })
+                const userServerPost =  serverDataBase[userId].post
+                const lookedForUserServerPost = serverDataBase[lookedForUserId].post;
                  serverDataBase[userId] = loggedInUserDetails
                 serverDataBase[lookedForUserId] = userLookedForDetails  
-                console.log("both user exist")
+
+                serverDataBase[userId].post = userServerPost
+                serverDataBase[lookedForUserId].post = lookedForUserServerPost
+              
             } else if (!checkifUserExist && !checkifLookedForUserExist) {
                 // if both don't exist we push in the psql databse into the server database array 
                 serverDataBase.push(loggedInUserDetails, userLookedForDetails)
-                console.log("bot user don't exist")
+              
             } else if (!checkifUserExist && checkifLookedForUserExist) {
                  // if the looged in user doesn't exist and the user looked for already exist in the server database
                 // we push in the looged in user and change the looked for user info with what we have in its database
                 
                 ifUserExistOrViceVersa(checkifLookedForUserExist.username, lookedForUserId, userLookedForDetails, loggedInUserDetails)
-                console.log("logged in user doesn't exist")
+                
             } else if (checkifUserExist && !checkifLookedForUserExist) {
                 // if user logged in exist in the  and the looked for user doesn't exist
                 // we change the logged in user details with what we are getting from psql db and push in the looked for user
                 ifUserExistOrViceVersa(checkifUserExist.username, userId, loggedInUserDetails, userLookedForDetails)
-                console.log("logged in user exist but the other one doesn't")
+                
             }
                
            
@@ -89,8 +97,11 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
 
         
     })
+    const user = serverDataBase.find((details) => details.username === userLoggedInUsername)
+    const userLookedFor = serverDataBase.find((details)=> details.username === userLookedForUsername)
     
-        console.log(serverDataBase, serverMessageDataBase)
+    // return serverDataBase
+    return {user, userLookedFor}
 }
 
 
@@ -111,6 +122,30 @@ export const addUserPostOrEmitPost = (user: string, post: []) => {
 
 }
 
+// code for suggesting user
+
+export const suggestUser = (username: string) => {
+    const user = serverDataBase.find((details) => details.username === username)
+    let unfollowing:ServerDatabase[] = []
+    serverDataBase.map((details) => {
+        user?.following.map((name) => {
+            if (details.username !== name.username) {
+                  const check = unfollowing.find((details)=>details.username === name)
+                 if (!check) {
+                   unfollowing.push(details);
+                 }
+            }
+          
+           
+        });
+    })
+    const notFollowingLength = unfollowing.length
+    for (let i = 0; i < notFollowingLength; i++){
+
+    }
+
+    return unfollowing
+}
   
 // export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
     
@@ -124,7 +159,7 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
     const findLoggedInUser = serverDataBase.find((name) => name.username === userLoggedIn)
     const findTheLookedForUser = serverDataBase.find((name) => name.username === userLookedFor)
 
-    console.log(findLoggedInUser, findTheLookedForUser,"I'm working")
+
     // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
     let errorStatus = false
     if (!findTheLookedForUser) {
@@ -132,7 +167,7 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
     } else {
         errorStatus = false
     }
-   console.log(errorStatus)
+ 
     const loggedInUserDetails = {
               id:findLoggedInUser?.id,
              username: findLoggedInUser?.username,
@@ -148,16 +183,16 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
     // This prevents double pushing, It checks if user already exist in  user following if it does it doesn't push
     const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser?.following.find((details) => details.username === userLookedFor)
     if (!checkIfUserAlreadyExistForUserLoggedIn) {
-       findTheLookedForUser && findLoggedInUser ?   findLoggedInUser?.following.push(lookedForUserDetails) : console.log("can't find one user")
+       findTheLookedForUser && findLoggedInUser ?   findLoggedInUser?.following.push(lookedForUserDetails) : ""
     }
     const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser?.followers.find((details) => details.username === userLoggedIn)
     if (!checkIfUserExistInLookedForUserFollowers) {
-      findTheLookedForUser && findLoggedInUser ?   findTheLookedForUser?.followers.push(loggedInUserDetails) : console.log("can't find one user")
+      findTheLookedForUser && findLoggedInUser ?   findTheLookedForUser?.followers.push(loggedInUserDetails) : ""
     }
   
     
     // followed means this type on notification is a type where user gets to know they've been followed and can follow back via the notification
-   findTheLookedForUser && findLoggedInUser ?  findTheLookedForUser?.notification.push({ followed: true, checked: false, notificationDetails:`${userLoggedIn} ${notificationWords}`, username:userLoggedIn, img_url:findTheLookedForUser.img_url}): console.log("can't find user")
+   findTheLookedForUser && findLoggedInUser ?  findTheLookedForUser?.notification.push({ followed: true, checked: false, notificationDetails:`${userLoggedIn} ${notificationWords}`, username:userLoggedIn, img_url:findTheLookedForUser.img_url}): "can't find user"
 
     // this following details is meant to reflect in the notification that you are now following the user that has followed you
     return { followerDetailsLookedForUser:findTheLookedForUser?.followers, notification: findTheLookedForUser?.notification, followingDetailsLoggedInUser:findLoggedInUser?.following, errorStatus:errorStatus }
@@ -170,7 +205,7 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
     const userThatWantToUnfollowDetails = serverDataBase.find((details)=>details.username === userLoggedInUserName) 
     const userTheyWantToUnfolllowDetails = serverDataBase.find((details) => details.username === userTheyWantToUnfollow)
        // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
-    console.log(userLoggedInUserName, userTheyWantToUnfollow, userThatWantToUnfollowDetails?.following,"user following")
+   
     // let followingDetailsForUserThatWantsToUnfollow:FollowFollowersDetails[]  = []
     // let followersDetailsForUserUnfollowed: FollowFollowersDetails[] = []
     let errorStatus = false
@@ -183,16 +218,15 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
         errorStatus = true
     }
     
-    console.log(userThatWantToUnfollowDetails?.following, userTheyWantToUnfolllowDetails?.followers, errorStatus)
-    
-
+  
     return {followingForUserThatWantsToUnfollow: userThatWantToUnfollowDetails?.following, followersForUserTheyHaveUnfollowed:userTheyWantToUnfolllowDetails?.followers, error:errorStatus}
         
 }
 
 
  export const createMessageBoxOrSendMessage = (owner:string, notowner:string, owner_imgurl:string, notowner_imgurl:string, incomingMessageOwner:MessageInterface, incomingMessageNotOwner:MessageInterface) => {
-    const ownerMessage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner)
+ 
+   const ownerMessage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner)
     const notOwnerMessage = serverMessageDataBase.find((name) => name.owner === notowner && name.notowner === owner)
     
     
@@ -210,7 +244,7 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
         serverMessageDataBase.push({owner:owner, notowner:notowner,notowner_imgurl:notowner_imgurl, message:[incomingMessageOwner]}, {owner:notowner, notowner:owner, notowner_imgurl:owner_imgurl, message:[incomingMessageNotOwner]})
     }
     // ownerMessage.message.push(incomingMessage)
-    //  console.log(ownerMessage, notOwnerMessage)
+  
      return serverMessageDataBase
     
 }
@@ -222,38 +256,52 @@ export const updatchecked = (owner:string, notowner:string) => {
     userCurrentMesage?.message.map((data) => {
         data.checked = true
     })
-    console.log(userCurrentMesage?.message)
+  
 }
 
 
 export const deleteMessage = (owner: string, notOwner:string) => {
-     console.log(owner, notOwner, "from socket controller")
-    // serverMessageDataBase = serverMessageDataBase.filter((details)=>details.owner !== owner && details.notowner !== notOwner  )
+   
+    serverMessageDataBase = serverMessageDataBase.filter((details)=>details.owner !== owner && details.notowner !== notOwner  )
 
 }
 
 
 
-export const addAndEmitPost = (username:string, userPost:POST) => {
+export const addAndEmitPost = (username: string, userPost: POST) => {
+    const { text, date, time, postedBy, comment, likes } = userPost
+    const user = serverDataBase.find((details) => details.username === postedBy)
+    const new_Post = {
+        text,
+        date,
+        time,
+        postedBy,
+        comment,
+        likes,
+        poster_imgUrl:user?.img_url
+    }
+  
     const findUserHomePost = homePost.find((details) => details.user === username)
     
     const userFollowers = serverDataBase.find((details) => details.username === username)
     // we pushed into user home post
-    findUserHomePost?.post.push(userPost)
+    
+    
+    findUserHomePost?.post.push(new_Post)
 
-    userFollowers?.post.push(userPost)
+    userFollowers?.post.push(new_Post)
     
     const post = homePost.map((data) => {
            userFollowers?.followers.map((details, id) => {
                if (details.username === data.user) {
-          data.post.push(userPost)
+          data.post.push(new_Post)
       }
     })
     }) 
 
-    console.log(findUserHomePost?.post, homePost)
+    
 
-    return {followers:userFollowers?.followers, userHomePost:findUserHomePost, userPost:userFollowers?.post}
+    return {followers:userFollowers?.followers, userHomePost:findUserHomePost, userPost:userFollowers?.post, post:new_Post}
     
 }
 
@@ -262,7 +310,7 @@ export const likeFunction = (user: string, postedBy: string, time: string) => {
     const postedByUser = serverDataBase.find((details) => details.username === postedBy)
     // we look for its post and the current post
     const currentPost = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
-    // we push in the user that wants t
+    // we push in the user that owns the post
     currentPost?.likes?.push(user)
 
     // we check everybody home post to see if a user has that same post 
@@ -274,12 +322,12 @@ export const likeFunction = (user: string, postedBy: string, time: string) => {
          })
     })
     
-    console.log(postedByUser, currentPost, currentPost?.likes, "yea yea yea yea")
    return currentPost?.likes
 }
 
 
-export const unlikeFunction = (user:string, postedBy: string, time: string) => {
+export const unlikeFunction = (user: string, postedBy: string, time: string) => {
+    // we acting on the user's real post and replacing the non owner post details with user's post
  
     const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
 
@@ -296,8 +344,7 @@ export const unlikeFunction = (user:string, postedBy: string, time: string) => {
              }
          })
     })
-    
-    console.log(postedByUser, post?.likes, "you unliked this post")
+
  
   return post?.likes 
 
@@ -309,6 +356,14 @@ export const commentFunction = (user:string, comment:string, img_url:string, com
     if (post) {
         post.comment?.push({ username: user, comment, img_url, time:commentTime})
     }
+
+     homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                 details.comment = post?.comment
+             }
+         })
+    })
     
 
     return post?.comment
@@ -339,4 +394,18 @@ export const unblockFuction = (userLoggedIn: string, userToBeUnBlocked: string) 
     
     return { userBlocked: user?.blocked, userToBeUnBlockedBlockedDetails:userToBeUnBlockedDetails?.blocked}
     
+}
+
+export const deletePost = (time: string, username: string) => {
+    const user = serverDataBase.find((data)=>data.username === username)
+    const findUser = homePost.find((data) => data.user === username)
+    if (user) {
+        user.post = user.post.filter((data)=>data.time !== time && data.postedBy === username)
+    }
+    if (findUser) {
+        findUser.post = findUser.post.filter((posts)=> posts.time !== time && posts.postedBy === username)
+    }
+
+    return {userhomePost:findUser?.post, userProfilePost:user?.post, username}
+
 }

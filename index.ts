@@ -22,6 +22,7 @@ import {
     commentFunction,
     blockUserFunction,
     unblockFuction,
+    deletePost
 } from "./socketController"
 
 
@@ -34,9 +35,11 @@ dotenv.config()
 
 
 // Middle Ware
-app.use(express.urlencoded({ extended: true }))
-app.use(cors())
-app.use(express.json())
+
+app.use(cors({}))
+app.use(express.json({limit:"25mb"}))
+app.use(express.urlencoded({ extended: true, limit:"25mb" }));
+
 
 app.use("/user", route)
 app.use("/message", messageroute)
@@ -56,19 +59,17 @@ io.on("connection", (socket:Socket) => {
         if (data.userinfo.username !== "") {
        
             socket.join(data.userinfo.username)
-         addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
+      const serverDataBase =   addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
             const homePost = addUserPostOrEmitPost(data.userinfo.username, data.userinfo.post)
-            console.log(homePost, data.userinfo.post, "this ref")
-            
-
+         
+       
             io.sockets.to(data.userinfo.username).emit("homePost", homePost)
-            
+            io.sockets.to(data.userinfo.username).emit("profilePost", { user: serverDataBase.user, lookedForUser:serverDataBase.userLookedFor })
         }
-    //    console.log(data.userinfo , data.userLookedFor)
+
 })
     const followFunction = (emitingSocketName1:string, emitingSocketName2:string, userLoggedInUserName:string, userTheyWantToFollow:string, notificationWord:string) => {
       let details = followUser(userLoggedInUserName, userTheyWantToFollow, notificationWord)
-        console.log(details)
        
         io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName1}`, { lookedForUserFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser: userLoggedInUserName,error:details.errorStatus  }),
        io.sockets.to(userTheyWantToFollow).emit(`${emitingSocketName2}`, { notification: details.notification, addedFollowers: details.followerDetailsLookedForUser, followingDetails: details.followingDetailsLoggedInUser, loggedInUser:userTheyWantToFollow, error:details.errorStatus })
@@ -77,7 +78,7 @@ io.on("connection", (socket:Socket) => {
     }
     const unfollowFunction = (emitingSocketName:string, userLoggedInUserName:string, userYouWantToUnfollow:string) => {
         const details = unfollowUser(userLoggedInUserName, userYouWantToUnfollow)
-        console.log(details)
+    
         
          io.sockets.to(userLoggedInUserName).emit(`${emitingSocketName}`, { userLoggedInFollowing: details.followingForUserThatWantsToUnfollow, userTheyWantToUnFollowFollowers: details.followersForUserTheyHaveUnfollowed, loggedInUser: userLoggedInUserName, error:details.error})
        
@@ -85,15 +86,14 @@ io.on("connection", (socket:Socket) => {
    
 // Allows you to follow user searched for via the route the other user profile is diplayed
     socket.on("followSocket1", async (data) => {
-      console.log(data.ownerUsername, )
-    
+      
     followFunction("followedUserLookedFor", "followedNotification", data.ownerUsername, data.userTheyTryingToFollow, data.notificationWords)
     })
 
     // Allows you to unfollow user searched for via route because user Id  username is not the same as the username in the redux store
     socket.on("unfollowSocket1", (data) => {
         const { userLoggedInUserName, userTheyWantToUnfollow} = data
-        console.log(userLoggedInUserName, userTheyWantToUnfollow )
+       
        unfollowFunction("unFollowed",userLoggedInUserName, userTheyWantToUnfollow)
     })
 
@@ -120,6 +120,7 @@ io.on("connection", (socket:Socket) => {
 
     // Socket for private messaging 
     socket.on("privateMessage", (data) => {
+
         // const message = (checked:boolean) => {
         //     return {sender:data.sender, time:data.time, text:data.text, checked:checked}
         // }
@@ -140,7 +141,7 @@ io.on("connection", (socket:Socket) => {
     })
 
     socket.on("deleteUserMessageBox", (data) => {
-        console.log(data)
+       
         deleteMessage(data.owner, data.notOwner)
         io.sockets.to(data.owner).emit("messageDeleted", { notowner:data.notOwner, owner:data.owner })
         
@@ -149,8 +150,9 @@ io.on("connection", (socket:Socket) => {
 
     // Post emiitter to followers
     socket.on("emitPost", (data) => {
-        console.log(data, "na the data be this")
+
         const details = addAndEmitPost(data.username, data.post)
+         const post =  details.post
           io.sockets.to(data.username).emit("userNewPost", {post:details.userPost, homePost:details.userHomePost})
 
         if (data.username === "Emeey_Lanr") {
@@ -158,35 +160,34 @@ io.on("connection", (socket:Socket) => {
             // follow me or not
             const allUsers = serverDataBase.filter((details) => details.username !== data.username)
             allUsers.map((details) => {
-                io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:data.post})
+                io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:post})
             })
             
         } else {
              details.followers?.map((details) => {
-            io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:data.post})
+            io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:post})
         })
         }
       
        
-       
-
-     console.log(details.followers)
         
          
     })
+
+
     const likeUnlikeCommentFunction = (user: string, comment:string, img_url:string, commentTime:string, postedBy: string, time: string, state: string, socketName1:string, socketName2:string) => {
         let detailsBox:any = []
         if (state === "like") {
-             detailsBox = likeFunction(user, postedBy, time)
-        } else if(state === "unlike") {
+            detailsBox = likeFunction(user, postedBy, time)
+        } else if (state === "unlike") {
             detailsBox = unlikeFunction(user, postedBy, time)
-        } else if(state === "comment") {
-            detailsBox = commentFunction(user, comment, img_url, commentTime, postedBy, time)
         }
+        // } else if(state === "comment") {
+        //     detailsBox = commentFunction(user, comment, img_url, commentTime, postedBy, time)
+        // }
              
 
 
-            console.log(detailsBox)
             // this goes to the current user 
             io.sockets.to(user).emit(socketName1, { likes: detailsBox,  postedBy: postedBy, time:time})
             
@@ -201,6 +202,7 @@ io.on("connection", (socket:Socket) => {
                 io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time})
             })
             } else {
+                 io.sockets.to(`${postedBy}`).emit(socketName1, {likes:detailsBox, postedBy:postedBy, time:time})  
                 // but if not emeey lanr we know only those following the user have the post
                 postedByUserFollower?.followers.map((details) => {
                     io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time})  
@@ -208,31 +210,51 @@ io.on("connection", (socket:Socket) => {
                 
             }
         }
+        
      socket.on("like", (data) => {
-            console.log("we are here")
+        
             likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
            
             
         })
-       
+   
     socket.on("unlike", (data) => {
        
          likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
         // likeGeneralFunction(data.user, data.)
     })
     socket.on("comment", (data) => {
-         likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
+      
+        const comment = commentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time)
+        // we're sending to the user's followers
+        // for Emeeey's case we search for all users that we have except emeey
+        const allUsers = serverDataBase.filter((details) => details.username !== data.postedBy)
+        
+        // we look for the user that posted and check the person's followers and send it to them
+        const postedByUserFollower = serverDataBase.find((details) => details.username === data.postedBy)
+        if (data.postedBy === "Emeey_Lanr") {
+             io.sockets.to("Emeey_Lanr").emit("comment1", { comment, postedBy:data.postedBy, time:data.time})
+               allUsers.map((details) => {
+                io.sockets.to(`${details.username}`).emit("Comment2", {comment, postedBy:data.postedBy, time:data.time})
+            })
+        } else {
+             io.sockets.to(`${data.postedBy}`).emit("comment1", { comment, postedBy:data.postedBy, time:data.time})
+             postedByUserFollower?.followers.map((details) => {
+                    io.sockets.to(`${details.username}`).emit("Comment2", {comment, postedBy:data.postedBy, time:data.time})  
+                })
+        }
+        //  likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
         
     })
+        
     socket.on("blockUser", (data) => {
-        console.log(data, "you are blocked")
    const blockDetails = blockUserFunction(data.userLoggedIn, data.userToBeBlocked)
      io.sockets.to(data.userLoggedIn).emit("blocked", {details:blockDetails.userBlocked})    
 
     })
 
     socket.on("unblockUser", (data) => {
-        console.log(data, "you've been unblocked")
+   
            const unblockDetails = unblockFuction(data.userLoggedIn, data.userToBeBlocked)
      io.sockets.to(data.userLoggedIn).emit("unblocked", {details:unblockDetails.userBlocked})   
     })
@@ -244,6 +266,14 @@ io.on("connection", (socket:Socket) => {
     socket.on("unblockVP", (data) => {
         const unblockDetails = unblockFuction(data.user, data.userToBeUnblocked)
         io.sockets.to(data.user).emit("unblockedVP",{userDetails:unblockDetails.userBlocked, userBlockedDetails:unblockDetails.userToBeUnBlockedBlockedDetails, userBlockedUsername:data.userToBeUnblocked} )
+    })
+
+
+    socket.on("deletePost",  (data) => {
+       
+        const postDeletedFunction = deletePost(data.time, data.username)
+
+        io.sockets.to(data.username).emit("postDeleted", {time:data.time, homePost:postDeletedFunction.userhomePost, profilePost:postDeletedFunction.userProfilePost, username:postDeletedFunction.username})
     })
    
     
@@ -263,13 +293,3 @@ httpServer.listen(PORT,() => {
     console.log(`server has started @ port ${PORT}`)
 })
 
-// io.on("connection", (socket: { emit: (arg0: string, arg1: { id: any }) => void; id: any; on: (arg0: string, arg1: () => void) => void }) => {
-//     socket.emit("hello", {id:socket.id})
-    
-
-
-//     socket.on("disconnect", () => {
-//         console.log("a user has disconnected")
-//     })
-    
-// })

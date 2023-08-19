@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
+exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
 const homePost = [];
@@ -10,7 +10,9 @@ const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
             serverId = id;
         }
     });
+    const post = exports.serverDataBase[serverId].post;
     exports.serverDataBase[serverId] = details;
+    exports.serverDataBase[serverId].post = post;
     exports.serverDataBase.push(secondDetails);
 };
 const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername, loggedInUserDetails, userLookedForDetails, userAllMessage) => {
@@ -23,7 +25,9 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
                     serverId = id;
                 }
             });
+            const userPost = exports.serverDataBase[serverId].post;
             exports.serverDataBase[serverId] = loggedInUserDetails;
+            exports.serverDataBase[serverId].post = userPost;
         }
         else {
             exports.serverDataBase.push(loggedInUserDetails);
@@ -44,26 +48,26 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
                     lookedForUserId = id;
                 }
             });
+            const userServerPost = exports.serverDataBase[userId].post;
+            const lookedForUserServerPost = exports.serverDataBase[lookedForUserId].post;
             exports.serverDataBase[userId] = loggedInUserDetails;
             exports.serverDataBase[lookedForUserId] = userLookedForDetails;
-            console.log("both user exist");
+            exports.serverDataBase[userId].post = userServerPost;
+            exports.serverDataBase[lookedForUserId].post = lookedForUserServerPost;
         }
         else if (!checkifUserExist && !checkifLookedForUserExist) {
             // if both don't exist we push in the psql databse into the server database array 
             exports.serverDataBase.push(loggedInUserDetails, userLookedForDetails);
-            console.log("bot user don't exist");
         }
         else if (!checkifUserExist && checkifLookedForUserExist) {
             // if the looged in user doesn't exist and the user looked for already exist in the server database
             // we push in the looged in user and change the looked for user info with what we have in its database
             ifUserExistOrViceVersa(checkifLookedForUserExist.username, lookedForUserId, userLookedForDetails, loggedInUserDetails);
-            console.log("logged in user doesn't exist");
         }
         else if (checkifUserExist && !checkifLookedForUserExist) {
             // if user logged in exist in the  and the looked for user doesn't exist
             // we change the logged in user details with what we are getting from psql db and push in the looked for user
             ifUserExistOrViceVersa(checkifUserExist.username, userId, loggedInUserDetails, userLookedForDetails);
-            console.log("logged in user exist but the other one doesn't");
         }
     }
     // For add messages to db
@@ -75,7 +79,10 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
             serverMessageDataBase.push(details);
         }
     });
-    console.log(exports.serverDataBase, serverMessageDataBase);
+    const user = exports.serverDataBase.find((details) => details.username === userLoggedInUsername);
+    const userLookedFor = exports.serverDataBase.find((details) => details.username === userLookedForUsername);
+    // return serverDataBase
+    return { user, userLookedFor };
 };
 exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
 const addUserPostOrEmitPost = (user, post) => {
@@ -93,13 +100,32 @@ const addUserPostOrEmitPost = (user, post) => {
     }
 };
 exports.addUserPostOrEmitPost = addUserPostOrEmitPost;
+// code for suggesting user
+const suggestUser = (username) => {
+    const user = exports.serverDataBase.find((details) => details.username === username);
+    let unfollowing = [];
+    exports.serverDataBase.map((details) => {
+        user === null || user === void 0 ? void 0 : user.following.map((name) => {
+            if (details.username !== name.username) {
+                const check = unfollowing.find((details) => details.username === name);
+                if (!check) {
+                    unfollowing.push(details);
+                }
+            }
+        });
+    });
+    const notFollowingLength = unfollowing.length;
+    for (let i = 0; i < notFollowingLength; i++) {
+    }
+    return unfollowing;
+};
+exports.suggestUser = suggestUser;
 // export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
 //     // serverMessageDataBase.push()
 // }
 const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
     const findLoggedInUser = exports.serverDataBase.find((name) => name.username === userLoggedIn);
     const findTheLookedForUser = exports.serverDataBase.find((name) => name.username === userLookedFor);
-    console.log(findLoggedInUser, findTheLookedForUser, "I'm working");
     // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
     let errorStatus = false;
     if (!findTheLookedForUser) {
@@ -108,7 +134,6 @@ const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
     else {
         errorStatus = false;
     }
-    console.log(errorStatus);
     const loggedInUserDetails = {
         id: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.id,
         username: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.username,
@@ -124,14 +149,14 @@ const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
     // This prevents double pushing, It checks if user already exist in  user following if it does it doesn't push
     const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.find((details) => details.username === userLookedFor);
     if (!checkIfUserAlreadyExistForUserLoggedIn) {
-        findTheLookedForUser && findLoggedInUser ? findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.push(lookedForUserDetails) : console.log("can't find one user");
+        findTheLookedForUser && findLoggedInUser ? findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.push(lookedForUserDetails) : "";
     }
     const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.find((details) => details.username === userLoggedIn);
     if (!checkIfUserExistInLookedForUserFollowers) {
-        findTheLookedForUser && findLoggedInUser ? findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.push(loggedInUserDetails) : console.log("can't find one user");
+        findTheLookedForUser && findLoggedInUser ? findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.push(loggedInUserDetails) : "";
     }
     // followed means this type on notification is a type where user gets to know they've been followed and can follow back via the notification
-    findTheLookedForUser && findLoggedInUser ? findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.notification.push({ followed: true, checked: false, notificationDetails: `${userLoggedIn} ${notificationWords}`, username: userLoggedIn, img_url: findTheLookedForUser.img_url }) : console.log("can't find user");
+    findTheLookedForUser && findLoggedInUser ? findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.notification.push({ followed: true, checked: false, notificationDetails: `${userLoggedIn} ${notificationWords}`, username: userLoggedIn, img_url: findTheLookedForUser.img_url }) : "can't find user";
     // this following details is meant to reflect in the notification that you are now following the user that has followed you
     return { followerDetailsLookedForUser: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers, notification: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.notification, followingDetailsLoggedInUser: findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following, errorStatus: errorStatus };
 };
@@ -140,7 +165,6 @@ const unfollowUser = (userLoggedInUserName, userTheyWantToUnfollow) => {
     const userThatWantToUnfollowDetails = exports.serverDataBase.find((details) => details.username === userLoggedInUserName);
     const userTheyWantToUnfolllowDetails = exports.serverDataBase.find((details) => details.username === userTheyWantToUnfollow);
     // The if statement helps to prevent the server from crashing incase there is an update and one of the user is not found
-    console.log(userLoggedInUserName, userTheyWantToUnfollow, userThatWantToUnfollowDetails === null || userThatWantToUnfollowDetails === void 0 ? void 0 : userThatWantToUnfollowDetails.following, "user following");
     // let followingDetailsForUserThatWantsToUnfollow:FollowFollowersDetails[]  = []
     // let followersDetailsForUserUnfollowed: FollowFollowersDetails[] = []
     let errorStatus = false;
@@ -153,7 +177,6 @@ const unfollowUser = (userLoggedInUserName, userTheyWantToUnfollow) => {
     else {
         errorStatus = true;
     }
-    console.log(userThatWantToUnfollowDetails === null || userThatWantToUnfollowDetails === void 0 ? void 0 : userThatWantToUnfollowDetails.following, userTheyWantToUnfolllowDetails === null || userTheyWantToUnfolllowDetails === void 0 ? void 0 : userTheyWantToUnfolllowDetails.followers, errorStatus);
     return { followingForUserThatWantsToUnfollow: userThatWantToUnfollowDetails === null || userThatWantToUnfollowDetails === void 0 ? void 0 : userThatWantToUnfollowDetails.following, followersForUserTheyHaveUnfollowed: userTheyWantToUnfolllowDetails === null || userTheyWantToUnfolllowDetails === void 0 ? void 0 : userTheyWantToUnfolllowDetails.followers, error: errorStatus };
 };
 exports.unfollowUser = unfollowUser;
@@ -176,7 +199,6 @@ const createMessageBoxOrSendMessage = (owner, notowner, owner_imgurl, notowner_i
         serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] }, { owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
     }
     // ownerMessage.message.push(incomingMessage)
-    //  console.log(ownerMessage, notOwnerMessage)
     return serverMessageDataBase;
 };
 exports.createMessageBoxOrSendMessage = createMessageBoxOrSendMessage;
@@ -185,29 +207,37 @@ const updatchecked = (owner, notowner) => {
     userCurrentMesage === null || userCurrentMesage === void 0 ? void 0 : userCurrentMesage.message.map((data) => {
         data.checked = true;
     });
-    console.log(userCurrentMesage === null || userCurrentMesage === void 0 ? void 0 : userCurrentMesage.message);
 };
 exports.updatchecked = updatchecked;
 const deleteMessage = (owner, notOwner) => {
-    console.log(owner, notOwner, "from socket controller");
-    // serverMessageDataBase = serverMessageDataBase.filter((details)=>details.owner !== owner && details.notowner !== notOwner  )
+    serverMessageDataBase = serverMessageDataBase.filter((details) => details.owner !== owner && details.notowner !== notOwner);
 };
 exports.deleteMessage = deleteMessage;
 const addAndEmitPost = (username, userPost) => {
+    const { text, date, time, postedBy, comment, likes } = userPost;
+    const user = exports.serverDataBase.find((details) => details.username === postedBy);
+    const new_Post = {
+        text,
+        date,
+        time,
+        postedBy,
+        comment,
+        likes,
+        poster_imgUrl: user === null || user === void 0 ? void 0 : user.img_url
+    };
     const findUserHomePost = homePost.find((details) => details.user === username);
     const userFollowers = exports.serverDataBase.find((details) => details.username === username);
     // we pushed into user home post
-    findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post.push(userPost);
-    userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post.push(userPost);
+    findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post.push(new_Post);
+    userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post.push(new_Post);
     const post = homePost.map((data) => {
         userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers.map((details, id) => {
             if (details.username === data.user) {
-                data.post.push(userPost);
+                data.post.push(new_Post);
             }
         });
     });
-    console.log(findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post, homePost);
-    return { followers: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers, userHomePost: findUserHomePost, userPost: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post };
+    return { followers: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers, userHomePost: findUserHomePost, userPost: userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post, post: new_Post };
 };
 exports.addAndEmitPost = addAndEmitPost;
 const likeFunction = (user, postedBy, time) => {
@@ -216,7 +246,7 @@ const likeFunction = (user, postedBy, time) => {
     const postedByUser = exports.serverDataBase.find((details) => details.username === postedBy);
     // we look for its post and the current post
     const currentPost = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
-    // we push in the user that wants t
+    // we push in the user that owns the post
     (_a = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes) === null || _a === void 0 ? void 0 : _a.push(user);
     // we check everybody home post to see if a user has that same post 
     homePost.map((details) => {
@@ -226,11 +256,11 @@ const likeFunction = (user, postedBy, time) => {
             }
         });
     });
-    console.log(postedByUser, currentPost, currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes, "yea yea yea yea");
     return currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
 };
 exports.likeFunction = likeFunction;
 const unlikeFunction = (user, postedBy, time) => {
+    // we acting on the user's real post and replacing the non owner post details with user's post
     var _a;
     const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
     const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
@@ -245,7 +275,6 @@ const unlikeFunction = (user, postedBy, time) => {
             }
         });
     });
-    console.log(postedByUser, post === null || post === void 0 ? void 0 : post.likes, "you unliked this post");
     return post === null || post === void 0 ? void 0 : post.likes;
 };
 exports.unlikeFunction = unlikeFunction;
@@ -256,6 +285,13 @@ const commentFunction = (user, comment, img_url, commentTime, postedBy, time) =>
     if (post) {
         (_a = post.comment) === null || _a === void 0 ? void 0 : _a.push({ username: user, comment, img_url, time: commentTime });
     }
+    homePost.map((details) => {
+        details.post.map((details) => {
+            if (details.postedBy === postedBy && details.time === time) {
+                details.comment = post === null || post === void 0 ? void 0 : post.comment;
+            }
+        });
+    });
     return post === null || post === void 0 ? void 0 : post.comment;
 };
 exports.commentFunction = commentFunction;
@@ -282,3 +318,15 @@ const unblockFuction = (userLoggedIn, userToBeUnBlocked) => {
     return { userBlocked: user === null || user === void 0 ? void 0 : user.blocked, userToBeUnBlockedBlockedDetails: userToBeUnBlockedDetails === null || userToBeUnBlockedDetails === void 0 ? void 0 : userToBeUnBlockedDetails.blocked };
 };
 exports.unblockFuction = unblockFuction;
+const deletePost = (time, username) => {
+    const user = exports.serverDataBase.find((data) => data.username === username);
+    const findUser = homePost.find((data) => data.user === username);
+    if (user) {
+        user.post = user.post.filter((data) => data.time !== time && data.postedBy === username);
+    }
+    if (findUser) {
+        findUser.post = findUser.post.filter((posts) => posts.time !== time && posts.postedBy === username);
+    }
+    return { userhomePost: findUser === null || findUser === void 0 ? void 0 : findUser.post, userProfilePost: user === null || user === void 0 ? void 0 : user.post, username };
+};
+exports.deletePost = deletePost;

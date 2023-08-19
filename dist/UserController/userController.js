@@ -8,11 +8,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
-const brcypt = require("bcrypt");
+const bcrypt_1 = __importDefault(require("bcrypt"));
+// const brcypt = require("bcrypt")
 const jwt = require("jsonwebtoken");
+const cloudinary_1 = require("cloudinary");
+cloudinary_1.v2.config({
+    cloud_name: process.env.CLOUDINARY_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password, img_url, background_img_url, about_me, post, following, followers, notification, blocked, state } = req.body;
     try {
@@ -23,7 +33,7 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
         else {
             //hash the user password
-            const hashedPasword = yield brcypt.hash(password, 10);
+            const hashedPasword = yield bcrypt_1.default.hash(password, 10);
             //  user db insertion
             const registeringUserData = [username, hashedPasword, img_url, background_img_url, about_me, JSON.stringify(post), JSON.stringify(following), JSON.stringify(followers), JSON.stringify(notification), JSON.stringify(blocked), state];
             const registerUser = yield db_1.pool.query("INSERT INTO user_info(username, password, img_url,background_img_url, about_me, post, following, followers,notification,blocked,state) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)", registeringUserData);
@@ -33,7 +43,6 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     catch (error) {
-        console.log(error.message);
     }
 });
 exports.signup = signup;
@@ -45,7 +54,7 @@ const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const { username, password } = req.body;
         const findUser = yield db_1.pool.query("SELECT * FROM user_info WHERE username = $1", [username]);
         if (findUser.rows.length > 0) {
-            const checkIfPassword = yield brcypt.compare(password, findUser.rows[0].password);
+            const checkIfPassword = yield bcrypt_1.default.compare(password, findUser.rows[0].password);
             if (checkIfPassword) {
                 const userToken = yield jwt.sign({ userId: findUser.rows[0].username }, process.env.TKN, { expiresIn: "7d" });
                 message(userToken, true, findUser.rows[0].username);
@@ -59,7 +68,7 @@ const signin = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     catch (error) {
-        console.log(error.message);
+        return res.send({ message: "an error occured", status: false });
     }
 });
 exports.signin = signin;
@@ -113,7 +122,6 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
         let updateNotification = [];
         // The lookedForUserUsername can be a path identification and not just only a username
         // if we identify it to be notification which is a path we change all checked to true that means the notification has been checked
-        console.log(lookedForUserUsername, "this is it");
         if (lookedForUserUsername === "notification") {
             updateNotification = yield ifUser[0].notification;
             updateNotification.map((data) => {
@@ -127,7 +135,6 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
             catch (error) {
                 console.log(error.message);
             }
-            console.log(updateNotification, "yea your notification");
         }
         const addUserFollowingFollowersForLoggedInUser = () => __awaiter(void 0, void 0, void 0, function* () {
             const addFollowingFollowersUser = yield lookForAllUser.rows.map((name) => {
@@ -174,13 +181,9 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
         else if (ifUser.length === 0 && ifOtherUser.length > 0) {
             addUserFollowingFollowersForUserLookedFor();
         }
-        else {
-            console.log("no user found");
-        }
         if (lookedForUser.rows.length === 1) {
             // if it the person searching
             if (ifUser.length === 1 && lookedForUserUsername === ifUser[0].username) {
-                console.log("User is logged in");
                 message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject, ifOtherUserFollowingFollowers, 11, "Only the user logged in is found", searchLoggedInUserMessage.rows);
             }
             else if (ifUser.length === 1 && lookedForUserUsername !== ifUser[0].username) {
@@ -188,13 +191,11 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
             }
             else {
                 // If it's the person searched for
-                console.log("user is not logged in");
                 message(userDataObject, ifUserFollowingFollowers, true, false, false, false, lookedForUser.rows[0], ifOtherUserFollowingFollowers, 13, "Only the user searched for is found", []);
             }
         }
         else if (lookedForUser.rows.length === 2) {
             // It checks if both users details are availbale
-            console.log("both user are looged available");
             message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, ifOtherUser[0], ifOtherUserFollowingFollowers, 2, "Both users found", searchLoggedInUserMessage.rows);
         }
         else if (lookedForUser.rows.length === 0) {
@@ -212,27 +213,24 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
             const identification = req.headers.authorization.split(",");
             searchForUser("", identification[2]);
         }
-        console.log(error.message);
     }
 });
 exports.verifyUserProfile = verifyUserProfile;
 const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body;
     try {
-        const searchUserLoggedInId = yield db_1.pool.query("SELECT id FROM user_info WHERE username = $1", [ownerUsername]);
-        const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
-        //  console.log(searchUserLoggedInId.rows[0].id, searchThePersonHeWantsToFollowId.rows[0].id)
+        const searchUserLoggedInId = yield db_1.pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [ownerUsername]);
+        const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
         const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow, id: searchThePersonHeWantsToFollowId.rows[0].id }), ownerUsername]);
-        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername, id: searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
+        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername, id: searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, img_url: `${searchUserLoggedInId.rows[0].img_url}`, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
     }
     catch (error) {
-        console.log(error.message);
+        res.status(400).send({ mesage: "an error occured", status: false });
     }
 });
 exports.followerUser = followerUser;
 const unfollowUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { userLoggedInUserName, userTheyWantToUnfollow } = req.body;
-    console.log(userLoggedInUserName, userTheyWantToUnfollow);
     const removeUserFromUserFollowingQuery = "UPDATE user_info SET following = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(following) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND following @> $3";
     const removeUserFromUserFollowerQuery = "UPDATE user_info SET followers = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(followers) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND followers @> $3";
     try {
@@ -240,7 +238,7 @@ const unfollowUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         const removeUserFromUserFollower = yield db_1.pool.query(removeUserFromUserFollowerQuery, [userLoggedInUserName, userTheyWantToUnfollow, JSON.stringify([{ username: userLoggedInUserName }])]);
     }
     catch (error) {
-        console.log(error.message, "error message");
+        res.status(400).send({ mesage: "an error occured", status: false });
     }
 });
 exports.unfollowUser = unfollowUser;
@@ -255,21 +253,52 @@ const searchForUsers = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.searchForUsers = searchForUsers;
-const userPost = (req, res) => {
+const userPost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, postContent } = req.body;
-    db_1.pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent), username]).then((result) => {
+    try {
+        const updatePost = yield db_1.pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent), username]);
         res.status(200).send({ message: "success", status: true });
-    }).catch((error) => {
-        res.status(404).send({ message: "error", status: false });
-        console.log(error.message);
-    });
-};
+    }
+    catch (error) {
+        res.status(400).json({ message: "an error occured", status: false });
+    }
+});
 exports.userPost = userPost;
+const deletePost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { time, username } = req.body;
+    try {
+        const deletePostQuery = "UPDATE user_info SET post = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(post) e WHERE e->>'time' <> $1 ), '[]'::jsonb)  WHERE username = $2";
+        const deletePost = yield db_1.pool.query(deletePostQuery, [time, username]);
+        res.status(202).send({ message: "deleted successfully", status: true });
+    }
+    catch (error) {
+        res.status(409).send({ message: "deleted successfully", status: true });
+    }
+});
+exports.deletePost = deletePost;
+const updateBackgroundProfileImage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { username, profileBackground, imgPreviewedUrl } = req.body;
+    try {
+        const whereToUpdate = { img: "" };
+        if (profileBackground === "Profile Image") {
+            whereToUpdate.img = "img_url";
+        }
+        else if (profileBackground === "Background Image") {
+            whereToUpdate.img = "background_img_url";
+        }
+        const uploadImage = yield cloudinary_1.v2.uploader.upload(imgPreviewedUrl, { public_id: `${username}${whereToUpdate.img}` });
+        const updateUser = yield db_1.pool.query(`UPDATE user_info SET ${whereToUpdate.img} = $1 WHERE username = $2`, [uploadImage.secure_url, username]);
+        res.status(200).send({ img_url: uploadImage.secure_url, username, status: true, where: whereToUpdate.img });
+    }
+    catch (error) {
+        res.status(400).send({ message: "an error occured", status: false });
+    }
+});
+exports.updateBackgroundProfileImage = updateBackgroundProfileImage;
 const updateAboutMe = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, aboutme } = req.body;
     try {
         const aboutMeUpdateQuery = yield db_1.pool.query("UPDATE user_info SET about_me = $1 WHERE username = $2", [aboutme, username]);
-        console.log(aboutMeUpdateQuery);
         res.status(200).send({ message: "updated succefully", status: true });
     }
     catch (error) {
@@ -295,29 +324,26 @@ const unblockUser = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         const activateQuery = yield db_1.pool.query(queryString, [userToBeBlocked, userLoggedIn, JSON.stringify([{ username: userToBeBlocked }])]);
     }
     catch (error) {
-        console.log(error.message);
+        res.status(404).send({ message: error.message, status: false });
     }
 });
 exports.unblockUser = unblockUser;
 const deleteAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        console.log(req.body);
         const { password, username } = req.body;
         const user = yield db_1.pool.query("SELECT password FROM user_info WHERE username = $1", [username]);
-        const comparePassword = yield brcypt.compare(password, user.rows[0].password);
-        console.log(comparePassword);
+        const comparePassword = yield bcrypt_1.default.compare(password, user.rows[0].password);
         if (comparePassword) {
             const deleteUser = yield db_1.pool.query("DELETE FROM user_info WHERE username = $1", [username]);
             const deleteMessage = yield db_1.pool.query("DELETE FROM texty_p_chat WHERE owner = $1", [username]);
             res.status(200).send({ status: true, message: "account details deleted succesfully" });
         }
         else {
-            console.log("incorrect password");
             res.status(404).send({ status: false, message: "Incorrect password" });
         }
     }
     catch (error) {
-        console.log(error);
+        res.status(404).send({ status: false, message: "Incorrect password" });
     }
 });
 exports.deleteAccount = deleteAccount;

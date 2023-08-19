@@ -13,9 +13,7 @@ exports.deleteMessage = exports.updatechecked = exports.sendOrCreateMessageConne
 const db_1 = require("../db");
 const sendOrCreateMessageConnection = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        console.log(req.body);
         const { owner, notowner, sender, text, time } = req.body;
-        console.log(owner, notowner);
         const searchForBothUsersQuery = "SELECT * FROM texty_p_chat WHERE owner = $1 AND notowner = $2";
         const searchForOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [owner, notowner]);
         const searchForNotOwnerMessageBox = yield db_1.pool.query(searchForBothUsersQuery, [notowner, owner]);
@@ -49,7 +47,7 @@ const sendOrCreateMessageConnection = (req, res) => __awaiter(void 0, void 0, vo
         }
     }
     catch (error) {
-        console.log(error.message);
+        res.status(404).send({ message: "an error occured", state: false });
     }
 });
 exports.sendOrCreateMessageConnection = sendOrCreateMessageConnection;
@@ -60,22 +58,20 @@ const updatechecked = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const change = yield getUserCurrentMeessage.rows[0].message.map((data) => {
             data.checked = true;
         });
-        console.log(change, "na me", getUserCurrentMeessage.rows[0].message);
         const updatechecked = yield db_1.pool.query("UPDATE texty_p_chat SET message = $1 where owner = $2 AND notowner = $3", [JSON.stringify(getUserCurrentMeessage.rows[0].message), owner, notowner]);
     }
     catch (error) {
-        console.log(error.message);
+        res.status(404).send({ message: "an error occured", state: false });
     }
 });
 exports.updatechecked = updatechecked;
 const deleteMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { owner, notOwner } = req.body;
-        console.log(owner, notOwner, "from message controller");
         const messageBox = yield db_1.pool.query("DELETE FROM texty_p_chat WHERE owner = $1 AND notowner = $2", [owner, notOwner]);
     }
     catch (error) {
-        console.log(error.message);
+        res.status(404).send({ message: "an error occured", state: false });
     }
 });
 exports.deleteMessage = deleteMessage;

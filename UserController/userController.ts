@@ -1,11 +1,21 @@
 
 
 import { Request, Response,} from "express"
-import {pool} from "../db"
+import { pool } from "../db"
+import brcypt from "bcrypt"
 
-const brcypt = require("bcrypt")
+
+// const brcypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 
+import { v2 as cloudinary } from "cloudinary";
+import { Console } from "console";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
  export const signup = async (req: Request, res: Response) => {
 
      const  {username,password, img_url,background_img_url, about_me,post, following,followers, notification, blocked, state} = req.body
@@ -30,7 +40,7 @@ const jwt = require("jsonwebtoken")
          
 
      } catch (error: any) {
-         console.log(error.message)
+ 
         
         
     }
@@ -60,7 +70,7 @@ export const signin = async (req: Request, res: Response) => {
             message("Invalid login crendentails", false)
         }
     } catch (error:any) {
-        console.log(error.message)
+          return res.send({message:"an error occured", status:false})
         
     }
     
@@ -162,7 +172,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         let updateNotification = []
         // The lookedForUserUsername can be a path identification and not just only a username
         // if we identify it to be notification which is a path we change all checked to true that means the notification has been checked
-        console.log(lookedForUserUsername, "this is it")
+        
         if (lookedForUserUsername === "notification") {
             
                       updateNotification = await ifUser[0].notification
@@ -178,7 +188,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
              console.log(error.message)   
             }
         
-              console.log(updateNotification, "yea your notification")
+            
            }
         const addUserFollowingFollowersForLoggedInUser = async () => {
               const addFollowingFollowersUser =  await lookForAllUser.rows.map((name: userData) => {
@@ -231,9 +241,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             addUserFollowingFollowersForLoggedInUser()
         } else if (ifUser.length === 0 && ifOtherUser.length > 0) {
             addUserFollowingFollowersForUserLookedFor()
-        } else {
-            console.log("no user found")
-        }
+        } 
         
     
     
@@ -244,18 +252,18 @@ export const verifyUserProfile = async (req: any, res: Response) => {
         if (lookedForUser.rows.length === 1) {
             // if it the person searching
             if (ifUser.length === 1 && lookedForUserUsername === ifUser[0].username) {
-                console.log("User is logged in")
+              
                 message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,  ifOtherUserFollowingFollowers,11,"Only the user logged in is found", searchLoggedInUserMessage.rows)
             } else if (ifUser.length === 1 && lookedForUserUsername !== ifUser[0].username) {
                 message(ifUser[0], ifUserFollowingFollowers, true, true, true, false, userDataObject,ifOtherUserFollowingFollowers,  12, "User Searched for not found", searchLoggedInUserMessage.rows)
             }else {
 // If it's the person searched for
-                console.log("user is not logged in")
+        
                 message(userDataObject, ifUserFollowingFollowers, true, false, false, false, lookedForUser.rows[0], ifOtherUserFollowingFollowers,13, "Only the user searched for is found", [])
             }
         } else if (lookedForUser.rows.length === 2) {
             // It checks if both users details are availbale
-            console.log("both user are looged available")
+         
              message( ifUser[0], ifUserFollowingFollowers, true, true, true, false, ifOtherUser[0], ifOtherUserFollowingFollowers, 2, "Both users found", searchLoggedInUserMessage.rows)
         } else if (lookedForUser.rows.length === 0) {
             // It checks if no user is found
@@ -281,7 +289,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             const identification = req.headers.authorization.split(",")
             searchForUser("", identification[2])
         }
-        console.log(error.message)
+      
     }
     
      
@@ -292,19 +300,19 @@ export const verifyUserProfile = async (req: any, res: Response) => {
      const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body
 
      try {
-         const searchUserLoggedInId = await pool.query("SELECT id FROM user_info WHERE username = $1", [ownerUsername])
-         const searchThePersonHeWantsToFollowId = await pool.query("SELECT id FROM user_info WHERE username = $1", [userTheyTryingToFollow])
-        //  console.log(searchUserLoggedInId.rows[0].id, searchThePersonHeWantsToFollowId.rows[0].id)
- 
-         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow, id:searchThePersonHeWantsToFollowId.rows[0].id}), ownerUsername ])
+         const searchUserLoggedInId = await pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [ownerUsername])
+         const searchThePersonHeWantsToFollowId = await pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [userTheyTryingToFollow])
+
+      
+         const updateLoggedInUserFollowing = await pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2",
+             [JSON.stringify({ username: userTheyTryingToFollow, id: searchThePersonHeWantsToFollowId.rows[0].id }), ownerUsername])
          const updatelookedForUserFollowers = await pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3",
-             [JSON.stringify({ username: ownerUsername, id:searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }),userTheyTryingToFollow])
+             [JSON.stringify({ username: ownerUsername, id:searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, img_url:`${searchUserLoggedInId.rows[0].img_url}`, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }),userTheyTryingToFollow])
+
 
          
-        
-         
      } catch (error:any) {
-         console.log(error.message)
+             res.status(400).send({mesage:"an error occured", status:false})
         
      }
              
@@ -314,14 +322,15 @@ export const verifyUserProfile = async (req: any, res: Response) => {
 
  export const unfollowUser = async (req: Request, res: Response) => {
      const { userLoggedInUserName, userTheyWantToUnfollow } = req.body
-     console.log(userLoggedInUserName, userTheyWantToUnfollow)
+    
      const removeUserFromUserFollowingQuery = "UPDATE user_info SET following = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(following) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND following @> $3"
     const  removeUserFromUserFollowerQuery = "UPDATE user_info SET followers = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(followers) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND followers @> $3"
     try {
         const removeUserFromUserFollowing = await pool.query(removeUserFromUserFollowingQuery, [userTheyWantToUnfollow, userLoggedInUserName, JSON.stringify([{username:userTheyWantToUnfollow}])])
         const removeUserFromUserFollower = await pool.query(removeUserFromUserFollowerQuery, [userLoggedInUserName, userTheyWantToUnfollow,JSON.stringify([{username:userLoggedInUserName}])]) 
     } catch (error: any) {
-        console.log(error.message, "error message")
+        res.status(400).send({mesage:"an error occured", status:false})
+        
         
     }
      
@@ -346,18 +355,51 @@ export const searchForUsers = async (req: Request, res: Response) => {
 }
 
 
- export const userPost = (req: Request, res: Response) => {
+ export const userPost = async (req: Request, res: Response) => {
      const { username, postContent } = req.body
-     
-  
-         pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent),username]).then((result:any) => {
-                  res.status(200).send({message:"success", status:true})
-         }).catch((error: any) => {
-             res.status(404).send({message:"error", status:false})
-           console.log(error.message)
-       })
-     
+     try {
+         const updatePost = await pool.query("UPDATE user_info SET post = post || $1 WHERE username = $2", [JSON.stringify(postContent), username])
+          res.status(200).send({message:"success", status:true})
+
+
+     } catch (error) {
+         res.status(400).json({message:"an error occured", status:false})
+     }
+         
+}
+
+export const deletePost = async (req: Request, res: Response) => {
+    const {time, username} = req.body
+    try {
+    const deletePostQuery =  "UPDATE user_info SET post = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(post) e WHERE e->>'time' <> $1 ), '[]'::jsonb)  WHERE username = $2";
+        const deletePost = await pool.query(deletePostQuery, [time, username])
+        res.status(202).send({ message:"deleted successfully", status:true})
+    } catch (error: any) {
+        res.status(409).send({ message: "deleted successfully", status: true });
+ 
+}
+};
+
+export const updateBackgroundProfileImage = async (req:Request, res:Response) => {
+    const { username, profileBackground, imgPreviewedUrl } = req.body;
+    try {
+
+        const whereToUpdate = {img:""}
+        if (profileBackground === "Profile Image") {
+            whereToUpdate.img = "img_url"
+        } else if (profileBackground === "Background Image") {
+          whereToUpdate.img = "background_img_url";
+        }
     
+      const uploadImage =  await cloudinary.uploader.upload(imgPreviewedUrl, { public_id: `${username}${whereToUpdate.img}` });
+      
+      const updateUser = await pool.query(`UPDATE user_info SET ${whereToUpdate.img} = $1 WHERE username = $2`, [uploadImage.secure_url, username])
+      res.status(200).send({img_url:uploadImage.secure_url, username,status:true, where:whereToUpdate.img})
+    } catch (error:any) {
+        res.status(400).send({message:"an error occured", status:false})
+   
+        
+    }
 }
 
 
@@ -365,7 +407,7 @@ export const updateAboutMe = async (req: Request, res: Response) => {
     const {username, aboutme } = req.body
     try {
         const aboutMeUpdateQuery = await pool.query("UPDATE user_info SET about_me = $1 WHERE username = $2", [aboutme, username])
-        console.log(aboutMeUpdateQuery)
+       
      res.status(200).send({message:"updated succefully", status:true})
     } catch (error: any) {
         res.status(404).send({message:"an error occured", status:false})
@@ -388,29 +430,30 @@ export const unblockUser = async (req: Request, res: Response) => {
         const {userLoggedIn, userToBeBlocked} = req.body
         const queryString = "UPDATE user_info SET blocked = COALESCE( (SELECT jsonb_agg(e) FROM jsonb_array_elements(blocked) e WHERE e->>'username' <> $1 ), '[]'::jsonb)  WHERE username = $2 AND blocked @> $3"
          const activateQuery = await pool.query(queryString, [userToBeBlocked, userLoggedIn, JSON.stringify([{username:userToBeBlocked}]) ])
-    } catch (error:any) {
-     console.log(error.message)   
+    } catch (error: any) {
+        res.status(404).send({ message: error.message, status: false });
+  
     }
     
 }
 
 export const deleteAccount = async (req:Request, res:Response) => {
     try {
-    console.log(req.body)
+   
         const {password, username} = req.body
         const user = await pool.query("SELECT password FROM user_info WHERE username = $1", [username])
         const comparePassword = await brcypt.compare(password, user.rows[0].password)
-       console.log(comparePassword)
+    
         if (comparePassword) {
             const deleteUser = await pool.query("DELETE FROM user_info WHERE username = $1", [username])
             const deleteMessage = await pool.query("DELETE FROM texty_p_chat WHERE owner = $1", [username])
             res.status(200).send({status:true, message:"account details deleted succesfully"})
         } else {
-            console.log("incorrect password")
             res.status(404).send({status:false, message:"Incorrect password"})
         }
     } catch (error) {
-        console.log(error)
+             res.status(404).send({status:false, message:"Incorrect password"})
+   
     }
 }
 
