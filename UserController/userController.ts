@@ -336,6 +336,36 @@ export const verifyUserProfile = async (req: any, res: Response) => {
      
 }
 
+export const commentLikesNotification = async (req: Request, res: Response) => {
+    const {user, postedBy, type } = req.body
+    try {
+        console.log(user, postedBy, type, "willow")
+
+
+        let message = ""
+        if (type === "commented") {
+            message = `${user} commented on your post`
+        } else if (type === "like") {
+            message = `${user} liked your post`
+        }
+        const lookForUser = await pool.query("SELECT img_url FROM user_info WHERE username = $1", [user])
+        const notification = {
+          followed: false,
+          checked: false,
+          notificationDetails: message,
+          username: user,
+          img_url: `${lookForUser.rows[0].img_url}`,
+        };        
+        if (user !== postedBy) {
+        
+            const notificationUpdate = await pool.query("UPDATE user_info SET  notification = notification || $1 WHERE username = $2",[JSON.stringify(notification), postedBy])
+        } 
+    
+    } catch (error:any) {
+    
+    }
+}
+
 
 export const searchForUsers = async (req: Request, res: Response) => {
     try {

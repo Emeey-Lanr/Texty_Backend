@@ -125,35 +125,34 @@ export const addUserPostOrEmitPost = (user: string, post: []) => {
 // code for suggesting user
 
 export const suggestUser = (username: string) => {
+  
     const user = serverDataBase.find((details) => details.username === username)
-    let unfollowing:ServerDatabase[] = []
-    serverDataBase.map((details) => {
-        user?.following.map((name) => {
-            if (details.username !== name.username) {
-                  const check = unfollowing.find((details)=>details.username === name)
-                 if (!check) {
-                   unfollowing.push(details);
-                 }
-            }
-          
-           
-        });
-    })
-    const notFollowingLength = unfollowing.length
-    for (let i = 0; i < notFollowingLength; i++){
-
+    let suggestedUser:ServerDatabase[] = []
+    if (user?.following.length === 0) {
+        suggestedUser = serverDataBase.filter((details) => details.username !== username)
+         user?.blocked.map((user)=>{
+            suggestedUser  = suggestedUser.filter((details)=> details.username !== user.username)
+          })
+    } else {
+        user?.following.map((following) => {
+                  suggestedUser =  serverDataBase.filter((detail)=>detail.username !== following.username && detail.username !== username )
+            
+        })
+          user?.blocked.map((user)=>{
+            suggestedUser  = suggestedUser.filter((details)=> details.username !== user.username)
+          })
+         
     }
+    
 
-    return unfollowing
+    
+    let shuffledUsers = suggestedUser.sort(() => Math.random() - 0.5)
+    
+    // const notFollowingLength = unfollowing.length
+
+     return  shuffledUsers.filter((_, id)=> id  < 6)
 }
   
-// export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
-    
-
-//     // serverMessageDataBase.push()
-    
-    
-// }
 
 export const followUser = (userLoggedIn:string, userLookedFor:string, notificationWords:string)=>   {
     const findLoggedInUser = serverDataBase.find((name) => name.username === userLoggedIn)
@@ -230,17 +229,21 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
     const notOwnerMessage = serverMessageDataBase.find((name) => name.owner === notowner && name.notowner === owner)
     
     
-    if (ownerMessage && notOwnerMessage) {
+     if (ownerMessage && notOwnerMessage) {
+       
         ownerMessage.message.push(incomingMessageOwner)
         notOwnerMessage.message.push(incomingMessageNotOwner)
-    } else if (ownerMessage && !notOwnerMessage) {
+     } else if (ownerMessage && !notOwnerMessage) {
+         
         ownerMessage.message.push(incomingMessageOwner)
         serverMessageDataBase.push({owner:notowner, notowner:owner, notowner_imgurl:owner_imgurl,  message:[incomingMessageNotOwner]})
         
-    } else if (!ownerMessage && notOwnerMessage) {
+     } else if (!ownerMessage && notOwnerMessage) {
+           
         serverMessageDataBase.push({owner:owner, notowner:notowner, notowner_imgurl:notowner_imgurl, message:[incomingMessageOwner]})
         notOwnerMessage.message.push(incomingMessageNotOwner)
-    } else if (!ownerMessage && !notOwnerMessage) {
+     } else if (!ownerMessage && !notOwnerMessage) {
+        
         serverMessageDataBase.push({owner:owner, notowner:notowner,notowner_imgurl:notowner_imgurl, message:[incomingMessageOwner]}, {owner:notowner, notowner:owner, notowner_imgurl:owner_imgurl, message:[incomingMessageNotOwner]})
     }
     // ownerMessage.message.push(incomingMessage)
@@ -307,11 +310,25 @@ export const addAndEmitPost = (username: string, userPost: POST) => {
 
 export const likeFunction = (user: string, postedBy: string, time: string) => {
     // we search for the user that posted the post
+    const userLoggedIn = serverDataBase.find((details)=>details.username === user)
     const postedByUser = serverDataBase.find((details) => details.username === postedBy)
+    
     // we look for its post and the current post
     const currentPost = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
     // we push in the user that owns the post
+       
     currentPost?.likes?.push(user)
+    if (user !== postedBy) {
+        postedByUser?.notification.push({
+        followed: false,
+        checked: false,
+        notificationDetails: `${user} liked your post`,
+        username: user,
+        img_url: `${userLoggedIn?.img_url}`,
+     })
+    }
+   
+
 
     // we check everybody home post to see if a user has that same post 
     homePost.map((details) => {
@@ -322,13 +339,12 @@ export const likeFunction = (user: string, postedBy: string, time: string) => {
          })
     })
     
-   return currentPost?.likes
+    return { LikeUnlike: currentPost?.likes, notification: postedByUser?.notification }
 }
 
 
 export const unlikeFunction = (user: string, postedBy: string, time: string) => {
     // we acting on the user's real post and replacing the non owner post details with user's post
- 
     const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
 
     const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
@@ -344,13 +360,17 @@ export const unlikeFunction = (user: string, postedBy: string, time: string) => 
              }
          })
     })
+ 
 
  
   return post?.likes 
 
 }
 
-export const commentFunction = (user:string, comment:string, img_url:string, commentTime:string, postedBy: string, time: string,) => {
+export const commentFunction = (user: string, comment: string, img_url: string, commentTime: string, postedBy: string, time: string,) => {
+          const userLoggedIn = serverDataBase.find(
+            (details) => details.username === user
+          );
       const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
     const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
     if (post) {
@@ -364,9 +384,15 @@ export const commentFunction = (user:string, comment:string, img_url:string, com
              }
          })
     })
-    
+        postedByUser?.notification.push({
+          followed: false,
+          checked: false,
+          notificationDetails: `${user} commented on your post`,
+          username: user,
+          img_url: `${userLoggedIn?.img_url}`,
+        });
 
-    return post?.comment
+    return { comment: post?.comment, notification: postedByUser?.notification }
 }
 
 export const blockUserFunction = (userLoggedIn: string, userToBeBlocked: string) => {

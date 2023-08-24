@@ -59,5 +59,6 @@ export interface ServerMessageInterface {
     owner:string;
     notowner: string;
     notowner_imgurl: string;
+    
     message:MessageInterface[];
 }

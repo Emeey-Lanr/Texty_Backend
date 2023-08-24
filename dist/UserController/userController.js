@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.userPost = exports.searchForUsers = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 // const brcypt = require("bcrypt")
@@ -242,6 +242,33 @@ const unfollowUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.unfollowUser = unfollowUser;
+const commentLikesNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { user, postedBy, type } = req.body;
+    try {
+        console.log(user, postedBy, type, "willow");
+        let message = "";
+        if (type === "commented") {
+            message = `${user} commented on your post`;
+        }
+        else if (type === "like") {
+            message = `${user} liked your post`;
+        }
+        const lookForUser = yield db_1.pool.query("SELECT img_url FROM user_info WHERE username = $1", [user]);
+        const notification = {
+            followed: false,
+            checked: false,
+            notificationDetails: message,
+            username: user,
+            img_url: `${lookForUser.rows[0].img_url}`,
+        };
+        if (user !== postedBy) {
+            const notificationUpdate = yield db_1.pool.query("UPDATE user_info SET  notification = notification || $1 WHERE username = $2", [JSON.stringify(notification), postedBy]);
+        }
+    }
+    catch (error) {
+    }
+});
+exports.commentLikesNotification = commentLikesNotification;
 const searchForUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // const lookedForAllUsers = 

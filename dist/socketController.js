@@ -103,26 +103,26 @@ exports.addUserPostOrEmitPost = addUserPostOrEmitPost;
 // code for suggesting user
 const suggestUser = (username) => {
     const user = exports.serverDataBase.find((details) => details.username === username);
-    let unfollowing = [];
-    exports.serverDataBase.map((details) => {
-        user === null || user === void 0 ? void 0 : user.following.map((name) => {
-            if (details.username !== name.username) {
-                const check = unfollowing.find((details) => details.username === name);
-                if (!check) {
-                    unfollowing.push(details);
-                }
-            }
+    let suggestedUser = [];
+    if ((user === null || user === void 0 ? void 0 : user.following.length) === 0) {
+        suggestedUser = exports.serverDataBase.filter((details) => details.username !== username);
+        user === null || user === void 0 ? void 0 : user.blocked.map((user) => {
+            suggestedUser = suggestedUser.filter((details) => details.username !== user.username);
         });
-    });
-    const notFollowingLength = unfollowing.length;
-    for (let i = 0; i < notFollowingLength; i++) {
     }
-    return unfollowing;
+    else {
+        user === null || user === void 0 ? void 0 : user.following.map((following) => {
+            suggestedUser = exports.serverDataBase.filter((detail) => detail.username !== following.username && detail.username !== username);
+        });
+        user === null || user === void 0 ? void 0 : user.blocked.map((user) => {
+            suggestedUser = suggestedUser.filter((details) => details.username !== user.username);
+        });
+    }
+    let shuffledUsers = suggestedUser.sort(() => Math.random() - 0.5);
+    // const notFollowingLength = unfollowing.length
+    return shuffledUsers.filter((_, id) => id < 6);
 };
 exports.suggestUser = suggestUser;
-// export const acceptIncomingMessageFromDb = (userId:string, userAllMessage:ServerMessageInterface[]) => {
-//     // serverMessageDataBase.push()
-// }
 const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
     const findLoggedInUser = exports.serverDataBase.find((name) => name.username === userLoggedIn);
     const findTheLookedForUser = exports.serverDataBase.find((name) => name.username === userLookedFor);
@@ -243,11 +243,21 @@ exports.addAndEmitPost = addAndEmitPost;
 const likeFunction = (user, postedBy, time) => {
     var _a;
     // we search for the user that posted the post
+    const userLoggedIn = exports.serverDataBase.find((details) => details.username === user);
     const postedByUser = exports.serverDataBase.find((details) => details.username === postedBy);
     // we look for its post and the current post
     const currentPost = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
     // we push in the user that owns the post
     (_a = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes) === null || _a === void 0 ? void 0 : _a.push(user);
+    if (user !== postedBy) {
+        postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
+            followed: false,
+            checked: false,
+            notificationDetails: `${user} liked your post`,
+            username: user,
+            img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
+        });
+    }
     // we check everybody home post to see if a user has that same post 
     homePost.map((details) => {
         details.post.map((details) => {
@@ -256,12 +266,12 @@ const likeFunction = (user, postedBy, time) => {
             }
         });
     });
-    return currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
+    return { LikeUnlike: currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification };
 };
 exports.likeFunction = likeFunction;
 const unlikeFunction = (user, postedBy, time) => {
-    // we acting on the user's real post and replacing the non owner post details with user's post
     var _a;
+    // we acting on the user's real post and replacing the non owner post details with user's post
     const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
     const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
     if (post) {
@@ -280,6 +290,7 @@ const unlikeFunction = (user, postedBy, time) => {
 exports.unlikeFunction = unlikeFunction;
 const commentFunction = (user, comment, img_url, commentTime, postedBy, time) => {
     var _a;
+    const userLoggedIn = exports.serverDataBase.find((details) => details.username === user);
     const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
     const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
     if (post) {
@@ -292,7 +303,14 @@ const commentFunction = (user, comment, img_url, commentTime, postedBy, time) =>
             }
         });
     });
-    return post === null || post === void 0 ? void 0 : post.comment;
+    postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
+        followed: false,
+        checked: false,
+        notificationDetails: `${user} commented on your post`,
+        username: user,
+        img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
+    });
+    return { comment: post === null || post === void 0 ? void 0 : post.comment, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification };
 };
 exports.commentFunction = commentFunction;
 const blockUserFunction = (userLoggedIn, userToBeBlocked) => {

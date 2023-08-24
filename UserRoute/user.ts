@@ -8,6 +8,7 @@ import {
     unfollowUser,
     searchForUsers,
     userPost,
+    commentLikesNotification,
     deletePost,
     updateBackgroundProfileImage,
     updateAboutMe,
@@ -23,6 +24,7 @@ route.post("/followUser", followerUser)
 route.post("/unfollowUser", unfollowUser)
 route.post("/search", searchForUsers)
 route.post("/createPost", userPost)
+route.put("/commentLikesNotification", commentLikesNotification);
 route.put("/updateImg", updateBackgroundProfileImage)
 route.put("/updateAboutMe", updateAboutMe)
 route.put("/blockUser", blockUser)

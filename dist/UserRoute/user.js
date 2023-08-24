@@ -14,6 +14,7 @@ exports.route.post("/followUser", userController_1.followerUser);
 exports.route.post("/unfollowUser", userController_1.unfollowUser);
 exports.route.post("/search", userController_1.searchForUsers);
 exports.route.post("/createPost", userController_1.userPost);
+exports.route.put("/commentLikesNotification", userController_1.commentLikesNotification);
 exports.route.put("/updateImg", userController_1.updateBackgroundProfileImage);
 exports.route.put("/updateAboutMe", userController_1.updateAboutMe);
 exports.route.put("/blockUser", userController_1.blockUser);
