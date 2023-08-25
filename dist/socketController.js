@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
+exports.deleteAccount = exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
 const homePost = [];
@@ -183,23 +183,32 @@ exports.unfollowUser = unfollowUser;
 const createMessageBoxOrSendMessage = (owner, notowner, owner_imgurl, notowner_imgurl, incomingMessageOwner, incomingMessageNotOwner) => {
     const ownerMessage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner);
     const notOwnerMessage = serverMessageDataBase.find((name) => name.owner === notowner && name.notowner === owner);
-    if (ownerMessage && notOwnerMessage) {
-        ownerMessage.message.push(incomingMessageOwner);
-        notOwnerMessage.message.push(incomingMessageNotOwner);
+    const notOwner = exports.serverDataBase.find((details) => details.username === notowner);
+    const ifBlockedByNotOwner = notOwner === null || notOwner === void 0 ? void 0 : notOwner.blocked.find((details) => details.username === owner);
+    let blocked = false;
+    if (ifBlockedByNotOwner) {
+        blocked = true;
     }
-    else if (ownerMessage && !notOwnerMessage) {
-        ownerMessage.message.push(incomingMessageOwner);
-        serverMessageDataBase.push({ owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
-    }
-    else if (!ownerMessage && notOwnerMessage) {
-        serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] });
-        notOwnerMessage.message.push(incomingMessageNotOwner);
-    }
-    else if (!ownerMessage && !notOwnerMessage) {
-        serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] }, { owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
+    else {
+        blocked = false;
+        if (ownerMessage && notOwnerMessage) {
+            ownerMessage.message.push(incomingMessageOwner);
+            notOwnerMessage.message.push(incomingMessageNotOwner);
+        }
+        else if (ownerMessage && !notOwnerMessage) {
+            ownerMessage.message.push(incomingMessageOwner);
+            serverMessageDataBase.push({ owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
+        }
+        else if (!ownerMessage && notOwnerMessage) {
+            serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] });
+            notOwnerMessage.message.push(incomingMessageNotOwner);
+        }
+        else if (!ownerMessage && !notOwnerMessage) {
+            serverMessageDataBase.push({ owner: owner, notowner: notowner, notowner_imgurl: notowner_imgurl, message: [incomingMessageOwner] }, { owner: notowner, notowner: owner, notowner_imgurl: owner_imgurl, message: [incomingMessageNotOwner] });
+        }
     }
     // ownerMessage.message.push(incomingMessage)
-    return serverMessageDataBase;
+    return { blocked, serverMessageDataBase };
 };
 exports.createMessageBoxOrSendMessage = createMessageBoxOrSendMessage;
 const updatchecked = (owner, notowner) => {
@@ -245,72 +254,91 @@ const likeFunction = (user, postedBy, time) => {
     // we search for the user that posted the post
     const userLoggedIn = exports.serverDataBase.find((details) => details.username === user);
     const postedByUser = exports.serverDataBase.find((details) => details.username === postedBy);
-    // we look for its post and the current post
-    const currentPost = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
-    // we push in the user that owns the post
-    (_a = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes) === null || _a === void 0 ? void 0 : _a.push(user);
-    if (user !== postedBy) {
-        postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
-            followed: false,
-            checked: false,
-            notificationDetails: `${user} liked your post`,
-            username: user,
-            img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
+    if (postedByUser) {
+        // we look for its post and the current post
+        const currentPost = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+        // we push in the user that owns the post
+        if (currentPost) {
+            (_a = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes) === null || _a === void 0 ? void 0 : _a.push(user);
+        }
+        if (user !== postedBy && currentPost) {
+            postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
+                followed: false,
+                checked: false,
+                notificationDetails: `${user} liked your post`,
+                username: user,
+                img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
+            });
+        }
+        // we check everybody home post to see if a user has that same post
+        homePost.map((details) => {
+            details.post.map((details) => {
+                if (details.postedBy === postedBy && details.time === time) {
+                    details.likes = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
+                }
+            });
         });
+        return { LikeUnlike: currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification, available: true };
     }
-    // we check everybody home post to see if a user has that same post 
-    homePost.map((details) => {
-        details.post.map((details) => {
-            if (details.postedBy === postedBy && details.time === time) {
-                details.likes = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
-            }
-        });
-    });
-    return { LikeUnlike: currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification };
+    else {
+        return { LikeUnlike: [], notification: [], available: false };
+    }
 };
 exports.likeFunction = likeFunction;
 const unlikeFunction = (user, postedBy, time) => {
     var _a;
     // we acting on the user's real post and replacing the non owner post details with user's post
     const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
-    const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
-    if (post) {
-        post.likes = (_a = post.likes) === null || _a === void 0 ? void 0 : _a.filter((details) => details !== user);
-        //
-    }
-    homePost.map((details) => {
-        details.post.map((details) => {
-            if (details.postedBy === postedBy && details.time === time) {
-                details.likes = post === null || post === void 0 ? void 0 : post.likes;
-            }
+    if (postedByUser) {
+        const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+        if (post) {
+            post.likes = (_a = post.likes) === null || _a === void 0 ? void 0 : _a.filter((details) => details !== user);
+            //
+        }
+        homePost.map((details) => {
+            details.post.map((details) => {
+                if (details.postedBy === postedBy && details.time === time) {
+                    details.likes = post === null || post === void 0 ? void 0 : post.likes;
+                }
+            });
         });
-    });
-    return post === null || post === void 0 ? void 0 : post.likes;
+        return { likes: post === null || post === void 0 ? void 0 : post.likes, available: true };
+    }
+    else {
+        return { likes: [], available: false };
+    }
 };
 exports.unlikeFunction = unlikeFunction;
 const commentFunction = (user, comment, img_url, commentTime, postedBy, time) => {
     var _a;
     const userLoggedIn = exports.serverDataBase.find((details) => details.username === user);
     const postedByUser = exports.serverDataBase.find((details, id) => details.username === postedBy);
-    const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
-    if (post) {
-        (_a = post.comment) === null || _a === void 0 ? void 0 : _a.push({ username: user, comment, img_url, time: commentTime });
-    }
-    homePost.map((details) => {
-        details.post.map((details) => {
-            if (details.postedBy === postedBy && details.time === time) {
-                details.comment = post === null || post === void 0 ? void 0 : post.comment;
-            }
+    if (postedByUser) {
+        const post = postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.post.find((details) => details.postedBy === postedBy && details.time === time);
+        if (post) {
+            (_a = post.comment) === null || _a === void 0 ? void 0 : _a.push({ username: user, comment, img_url, time: commentTime });
+        }
+        homePost.map((details) => {
+            details.post.map((details) => {
+                if (details.postedBy === postedBy && details.time === time) {
+                    details.comment = post === null || post === void 0 ? void 0 : post.comment;
+                }
+            });
         });
-    });
-    postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
-        followed: false,
-        checked: false,
-        notificationDetails: `${user} commented on your post`,
-        username: user,
-        img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
-    });
-    return { comment: post === null || post === void 0 ? void 0 : post.comment, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification };
+        if (post) {
+            postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification.push({
+                followed: false,
+                checked: false,
+                notificationDetails: `${user} commented on your post`,
+                username: user,
+                img_url: `${userLoggedIn === null || userLoggedIn === void 0 ? void 0 : userLoggedIn.img_url}`,
+            });
+        }
+        return { comment: post === null || post === void 0 ? void 0 : post.comment, notification: postedByUser === null || postedByUser === void 0 ? void 0 : postedByUser.notification, available: true };
+    }
+    else {
+        return { comment: [], notification: [], available: false };
+    }
 };
 exports.commentFunction = commentFunction;
 const blockUserFunction = (userLoggedIn, userToBeBlocked) => {
@@ -348,3 +376,7 @@ const deletePost = (time, username) => {
     return { userhomePost: findUser === null || findUser === void 0 ? void 0 : findUser.post, userProfilePost: user === null || user === void 0 ? void 0 : user.post, username };
 };
 exports.deletePost = deletePost;
+const deleteAccount = (username) => {
+    exports.serverDataBase = exports.serverDataBase.filter((details) => details.username !== username);
+};
+exports.deleteAccount = deleteAccount;

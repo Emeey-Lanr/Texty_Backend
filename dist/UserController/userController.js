@@ -15,7 +15,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const bcrypt_1 = __importDefault(require("bcrypt"));
-// const brcypt = require("bcrypt")
 const jwt = require("jsonwebtoken");
 const cloudinary_1 = require("cloudinary");
 cloudinary_1.v2.config({
@@ -133,7 +132,6 @@ const verifyUserProfile = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 const updateNotificationQuery = yield db_1.pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser[0].username]);
             }
             catch (error) {
-                console.log(error.message);
             }
         }
         const addUserFollowingFollowersForLoggedInUser = () => __awaiter(void 0, void 0, void 0, function* () {
@@ -245,7 +243,6 @@ exports.unfollowUser = unfollowUser;
 const commentLikesNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { user, postedBy, type } = req.body;
     try {
-        console.log(user, postedBy, type, "willow");
         let message = "";
         if (type === "commented") {
             message = `${user} commented on your post`;

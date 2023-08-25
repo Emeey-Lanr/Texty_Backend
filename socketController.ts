@@ -1,7 +1,7 @@
 import {ServerDatabase, ServerMessageInterface, POST, MessageInterface} from "./Interface"
 
 
-export const serverDataBase: ServerDatabase[] = []
+export let serverDataBase: ServerDatabase[] = []
 
 
 let serverMessageDataBase: ServerMessageInterface[] = []
@@ -228,8 +228,14 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
    const ownerMessage = serverMessageDataBase.find((name) => name.owner === owner && name.notowner === notowner)
     const notOwnerMessage = serverMessageDataBase.find((name) => name.owner === notowner && name.notowner === owner)
     
-    
-     if (ownerMessage && notOwnerMessage) {
+     const notOwner = serverDataBase.find((details) => details.username === notowner)
+     const ifBlockedByNotOwner = notOwner?.blocked.find((details) => details.username === owner)
+     let blocked = false
+     if (ifBlockedByNotOwner) {
+         blocked = true
+     } else {
+         blocked = false
+           if (ownerMessage && notOwnerMessage) {
        
         ownerMessage.message.push(incomingMessageOwner)
         notOwnerMessage.message.push(incomingMessageNotOwner)
@@ -246,9 +252,11 @@ export const unfollowUser = (userLoggedInUserName: string, userTheyWantToUnfollo
         
         serverMessageDataBase.push({owner:owner, notowner:notowner,notowner_imgurl:notowner_imgurl, message:[incomingMessageOwner]}, {owner:notowner, notowner:owner, notowner_imgurl:owner_imgurl, message:[incomingMessageNotOwner]})
     }
+     }
+   
     // ownerMessage.message.push(incomingMessage)
   
-     return serverMessageDataBase
+     return { blocked, serverMessageDataBase }
     
 }
 
@@ -313,41 +321,52 @@ export const likeFunction = (user: string, postedBy: string, time: string) => {
     const userLoggedIn = serverDataBase.find((details)=>details.username === user)
     const postedByUser = serverDataBase.find((details) => details.username === postedBy)
     
-    // we look for its post and the current post
-    const currentPost = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
-    // we push in the user that owns the post
-       
-    currentPost?.likes?.push(user)
-    if (user !== postedBy) {
+
+    if (postedByUser) {
+      // we look for its post and the current post
+
+      const currentPost = postedByUser?.post.find(
+        (details) => details.postedBy === postedBy && details.time === time
+      );
+      // we push in the user that owns the post
+        if (currentPost) {
+            currentPost?.likes?.push(user);
+        }
+      
+        if (user !== postedBy &&  currentPost) {
+          
         postedByUser?.notification.push({
-        followed: false,
-        checked: false,
-        notificationDetails: `${user} liked your post`,
-        username: user,
-        img_url: `${userLoggedIn?.img_url}`,
-     })
+          followed: false,
+          checked: false,
+          notificationDetails: `${user} liked your post`,
+          username: user,
+          img_url: `${userLoggedIn?.img_url}`,
+        });
+      }
+
+      // we check everybody home post to see if a user has that same post
+      homePost.map((details) => {
+        details.post.map((details) => {
+          if (details.postedBy === postedBy && details.time === time) {
+            details.likes = currentPost?.likes;
+          }
+        });
+      });
+      return { LikeUnlike: currentPost?.likes, notification: postedByUser?.notification, available:true }
+    } else {
+        return { LikeUnlike: [], notification: [], available:false }
     }
    
-
-
-    // we check everybody home post to see if a user has that same post 
-    homePost.map((details) => {
-        details.post.map((details) => {
-            if (details.postedBy === postedBy && details.time === time) {
-                 details.likes = currentPost?.likes
-             }
-         })
-    })
     
-    return { LikeUnlike: currentPost?.likes, notification: postedByUser?.notification }
+ 
 }
 
 
 export const unlikeFunction = (user: string, postedBy: string, time: string) => {
     // we acting on the user's real post and replacing the non owner post details with user's post
     const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
-
-    const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
+    if (postedByUser) {
+          const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
     
     if (post) {
         post.likes = post.likes?.filter((details) => details !== user)
@@ -360,10 +379,16 @@ export const unlikeFunction = (user: string, postedBy: string, time: string) => 
              }
          })
     })
+        return { likes: post?.likes, available: true }
+    } else {
+        return { likes: [], available: false } 
+    }
+
+  
  
 
  
-  return post?.likes 
+ 
 
 }
 
@@ -371,11 +396,13 @@ export const commentFunction = (user: string, comment: string, img_url: string, 
           const userLoggedIn = serverDataBase.find(
             (details) => details.username === user
           );
-      const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
-    const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
+    const postedByUser = serverDataBase.find((details, id) => details.username === postedBy)
+    if (postedByUser) {
+        const post = postedByUser?.post.find((details) => details.postedBy === postedBy && details.time === time)
     if (post) {
         post.comment?.push({ username: user, comment, img_url, time:commentTime})
     }
+
 
      homePost.map((details) => {
         details.post.map((details) => {
@@ -383,16 +410,25 @@ export const commentFunction = (user: string, comment: string, img_url: string, 
                  details.comment = post?.comment
              }
          })
-    })
-        postedByUser?.notification.push({
-          followed: false,
-          checked: false,
-          notificationDetails: `${user} commented on your post`,
-          username: user,
-          img_url: `${userLoggedIn?.img_url}`,
-        });
+     })
+    if (post) {
+         postedByUser?.notification.push({
+           followed: false,
+           checked: false,
+           notificationDetails: `${user} commented on your post`,
+           username: user,
+           img_url: `${userLoggedIn?.img_url}`,
+         });
+        
+    }
+       
 
-    return { comment: post?.comment, notification: postedByUser?.notification }
+    return { comment: post?.comment, notification: postedByUser?.notification, available: true }
+        
+    } else {
+            return { comment: [], notification: [], available: false}
+    }
+    
 }
 
 export const blockUserFunction = (userLoggedIn: string, userToBeBlocked: string) => {
@@ -434,4 +470,8 @@ export const deletePost = (time: string, username: string) => {
 
     return {userhomePost:findUser?.post, userProfilePost:user?.post, username}
 
+}
+
+export const  deleteAccount = (username:string)=>{
+     serverDataBase = serverDataBase.filter((details)=>details.username !== username)
 }

@@ -86,10 +86,10 @@ exports.io.on("connection", (socket) => {
     // Socket for private messaging 
     socket.on("privateMessage", (data) => {
         const messageDataBase = (0, socketController_2.createMessageBoxOrSendMessage)(data.owner, data.notowner, data.owner_imgurl, data.notowner_imgurl, { sender: data.sender, time: data.time, text: data.text, checked: true }, { sender: data.sender, time: data.time, text: data.text, checked: false });
-        const ownerMessageDetails = messageDataBase.find((name) => name.owner === data.owner && name.notowner === data.notowner);
-        const notOwnerMessageDetails = messageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner);
-        exports.io.sockets.to(data.owner).emit("incomingMessage", ownerMessageDetails);
-        exports.io.sockets.to(data.notowner).emit("incomingMessage", notOwnerMessageDetails);
+        const ownerMessageDetails = messageDataBase.serverMessageDataBase.find((name) => name.owner === data.owner && name.notowner === data.notowner);
+        const notOwnerMessageDetails = messageDataBase.serverMessageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner);
+        exports.io.sockets.to(data.owner).emit("incomingMessage", { blocked: messageDataBase.blocked, owner: true, message: ownerMessageDetails });
+        exports.io.sockets.to(data.notowner).emit("incomingMessage", { blocked: messageDataBase.blocked, owner: false, message: notOwnerMessageDetails });
     });
     // update if user has checked his or her own current message
     socket.on("updatchecked", (data) => {
@@ -122,33 +122,37 @@ exports.io.on("connection", (socket) => {
     const likeUnlikeCommentFunction = (user, comment, img_url, commentTime, postedBy, time, state, socketName1, socketName2) => {
         let detailsBox = [];
         let notification = [];
+        let available = false;
         if (state === "like") {
             let likes_with_Notification = (0, socketController_2.likeFunction)(user, postedBy, time);
             detailsBox = likes_with_Notification.LikeUnlike;
             notification = likes_with_Notification.notification;
+            available = likes_with_Notification.available;
         }
         else if (state === "unlike") {
-            detailsBox = (0, socketController_2.unlikeFunction)(user, postedBy, time);
+            let details = (0, socketController_2.unlikeFunction)(user, postedBy, time);
+            detailsBox = details.likes;
+            available = details.available;
         }
         // } else if(state === "comment") {
         //     detailsBox = commentFunction(user, comment, img_url, commentTime, postedBy, time)
         // }
         // this goes to the current user 
-        exports.io.sockets.to(user).emit(socketName1, { likes: detailsBox, postedBy: postedBy, time: time });
+        exports.io.sockets.to(user).emit(socketName1, { likes: detailsBox, postedBy: postedBy, time: time, available });
         const allUsers = socketController_1.serverDataBase.filter((details) => details.username !== postedBy);
         const postedByUserFollower = socketController_1.serverDataBase.find((details) => details.username == postedBy);
         // // this is meant of the other users that follows or alll user for emeey lanr
         if (postedBy === "Emeey_Lanr") {
-            exports.io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox, notification: notification, notified: state === "like" ? true : false, postedBy: postedBy, time: time });
+            exports.io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox, notification: notification, notified: state === "like" ? true : false, postedBy: postedBy, time: time, available });
             allUsers.map((details) => {
-                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time, notified: false });
+                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time, notified: false, available });
             });
         }
         else {
-            exports.io.sockets.to(`${postedBy}`).emit(socketName1, { likes: detailsBox, userThatLiked: user, notification: notification, notified: state === "like" ? true : false, postedBy: postedBy, time: time });
+            exports.io.sockets.to(`${postedBy}`).emit(socketName1, { likes: detailsBox, userThatLiked: user, notification: notification, notified: state === "like" ? true : false, postedBy: postedBy, time: time, available });
             // but if not emeey lanr we know only those following the user have the post
             postedByUserFollower === null || postedByUserFollower === void 0 ? void 0 : postedByUserFollower.followers.map((details) => {
-                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time, notified: false });
+                exports.io.sockets.to(`${details.username}`).emit(socketName2, { likes: detailsBox, postedBy: postedBy, time: time, notified: false, available });
             });
         }
     };
@@ -167,15 +171,15 @@ exports.io.on("connection", (socket) => {
         // we look for the user that posted and check the person's followers and send it to them
         const postedByUserFollower = socketController_1.serverDataBase.find((details) => details.username === data.postedBy);
         if (data.postedBy === "Emeey_Lanr") {
-            exports.io.sockets.to("Emeey_Lanr").emit("comment1", { comment: comment.comment, notification: comment.notification, notified: true, postedBy: data.postedBy, time: data.time });
+            exports.io.sockets.to("Emeey_Lanr").emit("comment1", { comment: comment.comment, notification: comment.notification, notified: true, postedBy: data.postedBy, time: data.time, available: comment.available });
             allUsers.map((details) => {
-                exports.io.sockets.to(`${details.username}`).emit("Comment2", { comment: comment.comment, postedBy: data.postedBy, time: data.time, notified: false });
+                exports.io.sockets.to(`${details.username}`).emit("Comment2", { comment: comment.comment, postedBy: data.postedBy, time: data.time, notified: false, available: comment.available });
             });
         }
         else {
-            exports.io.sockets.to(`${data.postedBy}`).emit("comment1", { comment: comment.comment, userThatCommented: data.user, notification: comment.notification, notified: true, postedBy: data.postedBy, time: data.time });
+            exports.io.sockets.to(`${data.postedBy}`).emit("comment1", { comment: comment.comment, userThatCommented: data.user, notification: comment.notification, notified: true, postedBy: data.postedBy, time: data.time, available: comment.available });
             postedByUserFollower === null || postedByUserFollower === void 0 ? void 0 : postedByUserFollower.followers.map((details) => {
-                exports.io.sockets.to(`${details.username}`).emit("Comment2", { comment: comment.comment, postedBy: data.postedBy, time: data.time, notified: false });
+                exports.io.sockets.to(`${details.username}`).emit("Comment2", { comment: comment.comment, postedBy: data.postedBy, time: data.time, notified: false, available: comment.available });
             });
         }
         //  likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
@@ -200,6 +204,10 @@ exports.io.on("connection", (socket) => {
     socket.on("deletePost", (data) => {
         const postDeletedFunction = (0, socketController_2.deletePost)(data.time, data.username);
         exports.io.sockets.to(data.username).emit("postDeleted", { time: data.time, homePost: postDeletedFunction.userhomePost, profilePost: postDeletedFunction.userProfilePost, username: postDeletedFunction.username });
+    });
+    socket.on("deleteAccount", (data) => {
+        console.log(data);
+        (0, socketController_1.deleteAccount)(data.username);
     });
     socket.on("disconnect", () => {
     });

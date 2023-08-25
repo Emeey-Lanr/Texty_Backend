@@ -8,7 +8,7 @@ import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
 import {messageroute} from "./UserRoute/messageRoute"
 import dotenv from "dotenv"
-import { serverDataBase, suggestUser } from "./socketController"
+import { deleteAccount, serverDataBase, suggestUser } from "./socketController"
 import {
     addUserInfoToServerDatabase,
     addUserPostOrEmitPost,
@@ -124,11 +124,11 @@ io.on("connection", (socket:Socket) => {
        
       const messageDataBase =   createMessageBoxOrSendMessage(data.owner, data.notowner, data.owner_imgurl, data.notowner_imgurl, {sender:data.sender, time:data.time, text:data.text, checked:true}, {sender:data.sender, time:data.time, text:data.text, checked:false} )
        
-        const ownerMessageDetails = messageDataBase.find((name) => name.owner === data.owner && name.notowner === data.notowner)
-        const notOwnerMessageDetails = messageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner)
+        const ownerMessageDetails = messageDataBase.serverMessageDataBase .find((name) => name.owner === data.owner && name.notowner === data.notowner)
+        const notOwnerMessageDetails = messageDataBase.serverMessageDataBase.find((name) => name.owner === data.notowner && name.notowner === data.owner)
         
-        io.sockets.to(data.owner).emit("incomingMessage", ownerMessageDetails)
-        io.sockets.to(data.notowner).emit("incomingMessage", notOwnerMessageDetails)
+        io.sockets.to(data.owner).emit("incomingMessage", { blocked: messageDataBase.blocked, owner: true, message: ownerMessageDetails })
+        io.sockets.to(data.notowner).emit("incomingMessage", { blocked: messageDataBase.blocked, owner:false, message: notOwnerMessageDetails })
      
          
     })
@@ -175,13 +175,17 @@ io.on("connection", (socket:Socket) => {
 
     const likeUnlikeCommentFunction = (user: string, comment:string, img_url:string, commentTime:string, postedBy: string, time: string, state: string, socketName1:string, socketName2:string) => {
         let detailsBox: any = []
-        let notification:any = []
+        let notification: any = []
+        let available = false
         if (state === "like") {
             let  likes_with_Notification  = likeFunction(user, postedBy, time)
             detailsBox = likes_with_Notification.LikeUnlike
-            notification =likes_with_Notification.notification
+            notification = likes_with_Notification.notification
+            available = likes_with_Notification.available
         } else if (state === "unlike") {
-            detailsBox = unlikeFunction(user, postedBy, time)
+            let details = unlikeFunction(user, postedBy, time)
+            detailsBox = details.likes
+             available =  details.available
         }
         // } else if(state === "comment") {
         //     detailsBox = commentFunction(user, comment, img_url, commentTime, postedBy, time)
@@ -190,7 +194,7 @@ io.on("connection", (socket:Socket) => {
 
 
             // this goes to the current user 
-            io.sockets.to(user).emit(socketName1, { likes: detailsBox,  postedBy: postedBy, time:time})
+            io.sockets.to(user).emit(socketName1, { likes: detailsBox,  postedBy: postedBy, time:time, available})
             
 
             const allUsers = serverDataBase.filter((details) => details.username !== postedBy)
@@ -198,16 +202,16 @@ io.on("connection", (socket:Socket) => {
             
             // // this is meant of the other users that follows or alll user for emeey lanr
             if (postedBy === "Emeey_Lanr") {
-                io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox, notification:notification, notified:state === "like" ? true : false, postedBy: postedBy, time:time})
+                io.sockets.to("Emeey_Lanr").emit(socketName1, { likes: detailsBox, notification:notification, notified:state === "like" ? true : false, postedBy: postedBy, time:time, available})
              allUsers.map((details) => {
-                io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time, notified:false})
+                io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time, notified:false, available})
              })
                 
             } else {
-                 io.sockets.to(`${postedBy}`).emit(socketName1, {likes:detailsBox, userThatLiked: user, notification:notification, notified:state === "like" ? true : false, postedBy:postedBy, time:time})  
+                 io.sockets.to(`${postedBy}`).emit(socketName1, {likes:detailsBox, userThatLiked: user, notification:notification, notified:state === "like" ? true : false, postedBy:postedBy, time:time, available})  
                 // but if not emeey lanr we know only those following the user have the post
                 postedByUserFollower?.followers.map((details) => {
-                    io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time, notified:false})  
+                    io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time, notified:false, available})  
                 })
                 
             }
@@ -228,6 +232,7 @@ io.on("connection", (socket:Socket) => {
     socket.on("comment", (data) => {
       
         const comment = commentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time)
+        
         // we're sending to the user's followers
         // for Emeeey's case we search for all users that we have except emeey
         const allUsers = serverDataBase.filter((details) => details.username !== data.postedBy)
@@ -235,14 +240,14 @@ io.on("connection", (socket:Socket) => {
         // we look for the user that posted and check the person's followers and send it to them
         const postedByUserFollower = serverDataBase.find((details) => details.username === data.postedBy)
         if (data.postedBy === "Emeey_Lanr") {
-             io.sockets.to("Emeey_Lanr").emit("comment1", { comment:comment.comment, notification:comment.notification, notified:true, postedBy:data.postedBy, time:data.time})
+             io.sockets.to("Emeey_Lanr").emit("comment1", { comment:comment.comment, notification:comment.notification, notified:true, postedBy:data.postedBy, time:data.time, available:comment.available})
                allUsers.map((details) => {
-                io.sockets.to(`${details.username}`).emit("Comment2", {comment:comment.comment,  postedBy:data.postedBy, time:data.time, notified:false })
+                io.sockets.to(`${details.username}`).emit("Comment2", {comment:comment.comment,  postedBy:data.postedBy, time:data.time, notified:false, available:comment.available })
             })
         } else {
-             io.sockets.to(`${data.postedBy}`).emit("comment1", { comment:comment.comment, userThatCommented:data.user, notification:comment.notification, notified:true, postedBy:data.postedBy, time:data.time})
+             io.sockets.to(`${data.postedBy}`).emit("comment1", { comment:comment.comment, userThatCommented:data.user, notification:comment.notification, notified:true, postedBy:data.postedBy, time:data.time, available:comment.available})
              postedByUserFollower?.followers.map((details) => {
-                    io.sockets.to(`${details.username}`).emit("Comment2", {comment:comment.comment, postedBy:data.postedBy, time:data.time, notified:false})  
+                    io.sockets.to(`${details.username}`).emit("Comment2", {comment:comment.comment, postedBy:data.postedBy, time:data.time, notified:false, available:comment.available})  
                 })
         }
         //  likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
@@ -277,7 +282,11 @@ io.on("connection", (socket:Socket) => {
 
         io.sockets.to(data.username).emit("postDeleted", {time:data.time, homePost:postDeletedFunction.userhomePost, profilePost:postDeletedFunction.userProfilePost, username:postDeletedFunction.username})
     })
-   
+    
+    socket.on("deleteAccount", (data) => {
+        console.log(data)
+        deleteAccount(data.username)
+    })
     
       
     socket.on("disconnect", () => {

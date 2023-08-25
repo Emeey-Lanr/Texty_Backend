@@ -4,12 +4,10 @@ import { Request, Response,} from "express"
 import { pool } from "../db"
 import brcypt from "bcrypt"
 
-
-// const brcypt = require("bcrypt")
 const jwt = require("jsonwebtoken")
 
 import { v2 as cloudinary } from "cloudinary";
-import { Console } from "console";
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -185,7 +183,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
             try {
             const updateNotificationQuery  = await pool.query("UPDATE user_info SET notification = $1 WHERE username = $2", [JSON.stringify(updateNotification), ifUser[0].username])
             } catch (error:any) {
-             console.log(error.message)   
+           
             }
         
             
@@ -339,9 +337,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
 export const commentLikesNotification = async (req: Request, res: Response) => {
     const {user, postedBy, type } = req.body
     try {
-        console.log(user, postedBy, type, "willow")
-
-
+        
         let message = ""
         if (type === "commented") {
             message = `${user} commented on your post`
