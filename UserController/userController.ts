@@ -14,10 +14,12 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
- export const signup = async (req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response) => {
+     
 
      const  {username,password, img_url,background_img_url, about_me,post, following,followers, notification, blocked, state} = req.body
-     try {
+    try {
+      
     //    Find if user exist
         const findUser = await pool.query("SELECT username FROM user_info WHERE username = $1", [username])
     
@@ -38,7 +40,8 @@ cloudinary.config({
          
 
      } catch (error: any) {
- 
+      
+              res.status(404).send({ message: "an error occured", status: false });
         
         
     }
@@ -271,7 +274,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
        }
     }
     try {
-
+       
          const identification = req.headers.authorization.split(",")
 
        

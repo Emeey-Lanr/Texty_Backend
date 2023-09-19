@@ -42,6 +42,7 @@ const signup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         }
     }
     catch (error) {
+        res.status(404).send({ message: "an error occured", status: false });
     }
 });
 exports.signup = signup;
