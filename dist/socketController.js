@@ -1,31 +1,9 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.addInfoOnTheStartOfTheServer = exports.serverDataBase = void 0;
-const db_1 = require("./db");
+exports.deleteAccount = exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.serverDataBase = void 0;
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
 const homePost = [];
-// Alternative Solution for the problem have cause
-const addInfoOnTheStartOfTheServer = () => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const lookForAllUsersQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info";
-        const allUsers = yield db_1.pool.query(lookForAllUsersQuery);
-        exports.serverDataBase = allUsers.rows;
-    }
-    catch (error) {
-        return new Error(error.message);
-    }
-});
-exports.addInfoOnTheStartOfTheServer = addInfoOnTheStartOfTheServer;
 const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
     exports.serverDataBase.map((name, id) => {
         if (name.username === username) {
