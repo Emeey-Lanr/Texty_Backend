@@ -212,6 +212,12 @@ exports.io.on("connection", (socket) => {
     socket.on("disconnect", () => {
     });
 });
-httpServer.listen(PORT, () => {
-    console.log(`server has started @ port ${PORT}`);
-});
+httpServer.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log(`server has started @ port ${PORT}`);
+        const addInfo = yield (0, socketController_2.addInfoOnTheStartOfTheServer)();
+    }
+    catch (error) {
+        console.log("Sever don crash");
+    }
+}));

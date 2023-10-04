@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from "express"
-
+import { pool } from "./db";
 // const cors = require("cors")
 import cors from "cors"
 
@@ -10,6 +10,7 @@ import {messageroute} from "./UserRoute/messageRoute"
 import dotenv from "dotenv"
 import { deleteAccount, serverDataBase, suggestUser } from "./socketController"
 import {
+    addInfoOnTheStartOfTheServer,
     addUserInfoToServerDatabase,
     addUserPostOrEmitPost,
     followUser, unfollowUser,
@@ -43,6 +44,7 @@ app.use(express.urlencoded({ extended: true, limit:"25mb" }));
 
 app.use("/user", route)
 app.use("/message", messageroute)
+
 const PORT = process.env.PORT
 
 
@@ -299,7 +301,14 @@ io.on("connection", (socket:Socket) => {
     
 })
 
-httpServer.listen(PORT,() => {
-    console.log(`server has started @ port ${PORT}`)
+httpServer.listen(PORT, async () => {
+    try {
+        console.log(`server has started @ port ${PORT}`);
+        const addInfo = await addInfoOnTheStartOfTheServer()
+    
+    } catch (error) {
+        console.log("Sever don crash")
+    }
+
 })
 

@@ -1,6 +1,6 @@
 import {ServerDatabase, ServerMessageInterface, POST, MessageInterface} from "./Interface"
 
-
+import { pool } from "./db";
 export let serverDataBase: ServerDatabase[] = []
 
 
@@ -14,6 +14,18 @@ interface UserPost {
 
 const homePost:UserPost[] = []
  
+// Alternative Solution for the problem have cause
+
+export const addInfoOnTheStartOfTheServer = async () => {
+    try {
+        const lookForAllUsersQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info";
+        const allUsers = await pool.query(lookForAllUsersQuery)
+        serverDataBase = allUsers.rows
+        
+    } catch (error:any) {
+        return new Error(error.message)
+    }
+}
 const ifUserExistOrViceVersa = (username:string,  serverId:number, details:ServerDatabase, secondDetails:ServerDatabase) => {
      serverDataBase.map((name, id) => {
                     if (name.username === username) {
@@ -164,6 +176,7 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
     if (!findTheLookedForUser) {
         errorStatus = true
     } else {
+       
         errorStatus = false
     }
  
