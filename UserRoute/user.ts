@@ -8,14 +8,16 @@ import {
     unfollowUser,
     searchForUsers,
     userPost,
+    likeUnlikePost,
+    comment,
     commentLikesNotification,
     deletePost,
     updateBackgroundProfileImage,
     updateAboutMe,
     blockUser,
     unblockUser,
-    deleteAccount,
-    likeUnlikePost
+    deleteAccount
+    
 } from "../UserController/userController"
 
 route.post("/signup", signup)
@@ -26,6 +28,7 @@ route.post("/unfollowUser", unfollowUser)
 route.post("/search", searchForUsers)
 route.post("/createPost", userPost)
 route.put("/likeUnlike", likeUnlikePost)
+route.put("/comment", comment)
 route.put("/commentLikesNotification", commentLikesNotification);
 route.put("/updateImg", updateBackgroundProfileImage)
 route.put("/updateAboutMe", updateAboutMe)

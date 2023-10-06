@@ -402,16 +402,40 @@ export const likeUnlikePost = async (req: Request, res: Response) => {
     time,
     state} = req.body
     try {
-        if (state === "like") {
-            const updateQuery = "UPDATE user_info SET post = jsonb_set(post,'{0, likes}', COALESCE(post->0->'likes','[]'::jsonb) || $1 WHERE username = $2 AND post->0->>'postedBy' = $3 AND POST->0->>'time'=$4"
-          const update = await pool.query(updateQuery, [user, postedBy, postedBy, time ])
+        const post = await pool.query("SELECT post FROM user_info WHERE username = $1", [postedBy])
+
+        const allPost = post.rows[0].post
+        let currentPostId = -1
+        for (let i = 0; i < allPost.length; i++){
+            if (allPost[i].time === time) {
+                currentPostId = i
+                break
+            }
         }
-        console.log(req.body,"hello")
-        
-    } catch (error:any) {
-        console.log(error.message)
+    
+        if (state === "like") {
+            if (!allPost[currentPostId].likes.some((data: string) => data === user)) {
+             allPost[currentPostId].likes.push(user)  
+           } 
+        } else {
+          allPost[currentPostId].likes = allPost[currentPostId].likes.filter((data:string)=>data !== user)
+        }
+         
+     const update = await pool.query("UPDATE user_info SET post = $1 WHERE username = $2", [JSON.stringify(allPost), postedBy])
+    } catch (error: any) {
+            res.status(400).json({message:"an error occured", status:false})
+        // console.log(error.message)
     }
     
+}
+
+
+export const comment = async (req: Request, res: Response) => {
+    try {
+        
+    } catch (error) {
+        
+    }
 }
 
 export const deletePost = async (req: Request, res: Response) => {

@@ -292,9 +292,28 @@ exports.userPost = userPost;
 const likeUnlikePost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { user, postedBy, time, state } = req.body;
     try {
-        console.log(req.body, "hello");
+        const post = yield db_1.pool.query("SELECT post FROM user_info WHERE username = $1", [postedBy]);
+        const allPost = post.rows[0].post;
+        let currentPostId = -1;
+        for (let i = 0; i < allPost.length; i++) {
+            if (allPost[i].time === time) {
+                currentPostId = i;
+                break;
+            }
+        }
+        if (state === "like") {
+            if (!allPost[currentPostId].likes.some((data) => data === user)) {
+                allPost[currentPostId].likes.push(user);
+            }
+        }
+        else {
+            allPost[currentPostId].likes = allPost[currentPostId].likes.filter((data) => data !== user);
+        }
+        const update = yield db_1.pool.query("UPDATE user_info SET post = $1 WHERE username = $2", [JSON.stringify(allPost), postedBy]);
     }
     catch (error) {
+        res.status(400).json({ message: "an error occured", status: false });
+        // console.log(error.message)
     }
 });
 exports.likeUnlikePost = likeUnlikePost;
