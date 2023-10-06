@@ -21,6 +21,7 @@ const socket_io_1 = require("socket.io");
 const user_1 = require("./UserRoute/user");
 const messageRoute_1 = require("./UserRoute/messageRoute");
 const dotenv_1 = __importDefault(require("dotenv"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const socketController_1 = require("./socketController");
 const socketController_2 = require("./socketController");
 const app = (0, express_1.default)();
@@ -212,6 +213,13 @@ exports.io.on("connection", (socket) => {
     socket.on("disconnect", () => {
     });
 });
-httpServer.listen(PORT, () => {
-    console.log(`server has started @ port ${PORT}`);
-});
+httpServer.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const updateInfoFunction = yield (0, socketController_2.updateInfo)();
+        const connect = yield mongoose_1.default.connect(`${process.env.URI}`);
+        console.log(`server has started @ port ${PORT}`);
+    }
+    catch (error) {
+        console.log(`${error.message}`);
+    }
+}));

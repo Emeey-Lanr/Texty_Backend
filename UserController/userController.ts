@@ -396,6 +396,23 @@ export const searchForUsers = async (req: Request, res: Response) => {
      }
          
 }
+export const likeUnlikePost = async (req: Request, res: Response) => {
+    const { user,
+    postedBy,
+    time,
+    state} = req.body
+    try {
+        if (state === "like") {
+            const updateQuery = "UPDATE user_info SET post = jsonb_set(post,'{0, likes}', COALESCE(post->0->'likes','[]'::jsonb) || $1 WHERE username = $2 AND post->0->>'postedBy' = $3 AND POST->0->>'time'=$4"
+          const update = await pool.query(updateQuery, [user, postedBy, postedBy, time ])
+        }
+        console.log(req.body,"hello")
+        
+    } catch (error:any) {
+        console.log(error.message)
+    }
+    
+}
 
 export const deletePost = async (req: Request, res: Response) => {
     const {time, username} = req.body

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.likeUnlikePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jwt = require("jsonwebtoken");
@@ -289,6 +289,15 @@ const userPost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.userPost = userPost;
+const likeUnlikePost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { user, postedBy, time, state } = req.body;
+    try {
+        console.log(req.body, "hello");
+    }
+    catch (error) {
+    }
+});
+exports.likeUnlikePost = likeUnlikePost;
 const deletePost = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { time, username } = req.body;
     try {

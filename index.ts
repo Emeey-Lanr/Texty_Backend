@@ -8,8 +8,10 @@ import {Server, Socket } from "socket.io"
 import { route } from "./UserRoute/user"
 import {messageroute} from "./UserRoute/messageRoute"
 import dotenv from "dotenv"
+import mongoose from "mongoose"
 import { deleteAccount, serverDataBase, suggestUser } from "./socketController"
 import {
+    updateInfo,
     addUserInfoToServerDatabase,
     addUserPostOrEmitPost,
     followUser, unfollowUser,
@@ -299,7 +301,14 @@ io.on("connection", (socket:Socket) => {
     
 })
 
-httpServer.listen(PORT,() => {
-    console.log(`server has started @ port ${PORT}`)
+httpServer.listen(PORT, async () => {
+    try {
+        const updateInfoFunction = await updateInfo()
+        const connect = await mongoose.connect(`${process.env.URI}`)
+        console.log(`server has started @ port ${PORT}`);
+    } catch (error:any) {
+        console.log(`${error.message}`)
+    }
+   
 })
 

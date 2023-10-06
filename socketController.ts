@@ -1,4 +1,5 @@
-import {ServerDatabase, ServerMessageInterface, POST, MessageInterface} from "./Interface"
+import { ServerDatabase, ServerMessageInterface, POST, MessageInterface } from "./Interface"
+import { pool } from "./db";
 
 
 export let serverDataBase: ServerDatabase[] = []
@@ -13,7 +14,18 @@ interface UserPost {
 }
 
 const homePost:UserPost[] = []
- 
+
+export const updateInfo = async () => {
+    try {
+        const lookForUsersQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info"
+        const users = await pool.query(lookForUsersQuery)
+        serverDataBase = users.rows
+    } catch (error:any) {
+        return new Error(error.message)
+    }
+}
+
+
 const ifUserExistOrViceVersa = (username:string,  serverId:number, details:ServerDatabase, secondDetails:ServerDatabase) => {
      serverDataBase.map((name, id) => {
                     if (name.username === username) {
