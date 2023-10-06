@@ -1,5 +1,6 @@
 import { ServerDatabase, ServerMessageInterface, POST, MessageInterface } from "./Interface"
 import { pool } from "./db";
+import { homePostModel } from "./homepostModel";
 
 
 export let serverDataBase: ServerDatabase[] = []
@@ -13,7 +14,8 @@ interface UserPost {
     post: POST[];
 }
 
-const homePost:UserPost[] = []
+export let homePost: UserPost[] = []
+
 
 export const updateInfo = async () => {
     try {
@@ -25,6 +27,29 @@ export const updateInfo = async () => {
     }
 }
 
+export const createHomePostDb = async () => {
+    try {
+        const texyHomePost = await homePostModel.findOne({ postId: `${process.env.homePostId}` })
+        if (texyHomePost !== null) {
+     
+            homePost = texyHomePost.post
+        } else {
+            const addPost = new homePostModel({postId:process.env.homePostId, post:[]})
+            const savePost = await addPost.save()
+
+        }
+    } catch (error:any) {
+        return new Error(error.message)
+    }
+}
+ export const updateHomePost = async () => {
+    try {
+         const update = await homePostModel.findOneAndUpdate({postId:process.env.homePostId}, {postId:process.env.homePostId, post:homePost})
+    } catch (error) {
+        
+    }
+   
+}
 
 const ifUserExistOrViceVersa = (username:string,  serverId:number, details:ServerDatabase, secondDetails:ServerDatabase) => {
      serverDataBase.map((name, id) => {
@@ -110,26 +135,35 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
         
     })
     const user = serverDataBase.find((details) => details.username === userLoggedInUsername)
-    const userLookedFor = serverDataBase.find((details)=> details.username === userLookedForUsername)
+    const userLookedFor = serverDataBase.find((details) => details.username === userLookedForUsername)
+    
     
     // return serverDataBase
     return {user, userLookedFor}
 }
 
 
-export const addUserPostOrEmitPost = (user: string, post: []) => {
-    const userPostExist = serverDataBase.find((details) => details.username === user)
-    const userHomePostExist = homePost.find((details)=> details.user === user)
+export const addUserPostOrEmitPost = async (user: string, post: []) => {
+
+          const userPostExist = serverDataBase.find((details) => details.username === user)
+        const userHomePostExist = homePost.find((details) => details.user === user)
+
     if (userPostExist) {
       userPostExist.post = post  
     } 
     
-    if (!userHomePostExist) {
+        if (!userHomePostExist) {
+     
         homePost.push({ user: user, post: [] })
-        return { user: user, post: [] }
+      
+      return { user: user, post: [] }
+
     } else {
+    
         return userHomePostExist
     }
+   
+  
 
 
 }
@@ -319,8 +353,10 @@ export const addAndEmitPost = (username: string, userPost: POST) => {
                if (details.username === data.user) {
           data.post.push(new_Post)
       }
-    })
+           })
+      
     }) 
+
 
     
 
@@ -364,7 +400,9 @@ export const likeFunction = (user: string, postedBy: string, time: string) => {
           }
         });
       });
-      return { LikeUnlike: currentPost?.likes, notification: postedByUser?.notification, available:true }
+    
+        return { LikeUnlike: currentPost?.likes, notification: postedByUser?.notification, available: true }
+         
     } else {
         return { LikeUnlike: [], notification: [], available:false }
     }

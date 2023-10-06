@@ -9,11 +9,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.updateInfo = exports.serverDataBase = void 0;
+exports.deleteAccount = exports.deletePost = exports.unblockFuction = exports.blockUserFunction = exports.commentFunction = exports.unlikeFunction = exports.likeFunction = exports.addAndEmitPost = exports.deleteMessage = exports.updatchecked = exports.createMessageBoxOrSendMessage = exports.unfollowUser = exports.followUser = exports.suggestUser = exports.addUserPostOrEmitPost = exports.addUserInfoToServerDatabase = exports.updateHomePost = exports.createHomePostDb = exports.updateInfo = exports.homePost = exports.serverDataBase = void 0;
 const db_1 = require("./db");
+const homepostModel_1 = require("./homepostModel");
 exports.serverDataBase = [];
 let serverMessageDataBase = [];
-const homePost = [];
+exports.homePost = [];
 const updateInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const lookForUsersQuery = "SELECT id, username, img_url, background_img_url, about_me,post, following, followers, notification,blocked, state FROM user_info";
@@ -25,6 +26,30 @@ const updateInfo = () => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.updateInfo = updateInfo;
+const createHomePostDb = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const texyHomePost = yield homepostModel_1.homePostModel.findOne({ postId: `${process.env.homePostId}` });
+        if (texyHomePost !== null) {
+            exports.homePost = texyHomePost.post;
+        }
+        else {
+            const addPost = new homepostModel_1.homePostModel({ postId: process.env.homePostId, post: [] });
+            const savePost = yield addPost.save();
+        }
+    }
+    catch (error) {
+        return new Error(error.message);
+    }
+});
+exports.createHomePostDb = createHomePostDb;
+const updateHomePost = () => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const update = yield homepostModel_1.homePostModel.findOneAndUpdate({ postId: process.env.homePostId }, { postId: process.env.homePostId, post: exports.homePost });
+    }
+    catch (error) {
+    }
+});
+exports.updateHomePost = updateHomePost;
 const ifUserExistOrViceVersa = (username, serverId, details, secondDetails) => {
     exports.serverDataBase.map((name, id) => {
         if (name.username === username) {
@@ -106,20 +131,20 @@ const addUserInfoToServerDatabase = (userLoggedInUsername, userLookedForUsername
     return { user, userLookedFor };
 };
 exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
-const addUserPostOrEmitPost = (user, post) => {
+const addUserPostOrEmitPost = (user, post) => __awaiter(void 0, void 0, void 0, function* () {
     const userPostExist = exports.serverDataBase.find((details) => details.username === user);
-    const userHomePostExist = homePost.find((details) => details.user === user);
+    const userHomePostExist = exports.homePost.find((details) => details.user === user);
     if (userPostExist) {
         userPostExist.post = post;
     }
     if (!userHomePostExist) {
-        homePost.push({ user: user, post: [] });
+        exports.homePost.push({ user: user, post: [] });
         return { user: user, post: [] };
     }
     else {
         return userHomePostExist;
     }
-};
+});
 exports.addUserPostOrEmitPost = addUserPostOrEmitPost;
 // code for suggesting user
 const suggestUser = (username) => {
@@ -255,12 +280,12 @@ const addAndEmitPost = (username, userPost) => {
         likes,
         poster_imgUrl: user === null || user === void 0 ? void 0 : user.img_url
     };
-    const findUserHomePost = homePost.find((details) => details.user === username);
+    const findUserHomePost = exports.homePost.find((details) => details.user === username);
     const userFollowers = exports.serverDataBase.find((details) => details.username === username);
     // we pushed into user home post
     findUserHomePost === null || findUserHomePost === void 0 ? void 0 : findUserHomePost.post.push(new_Post);
     userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.post.push(new_Post);
-    const post = homePost.map((data) => {
+    const post = exports.homePost.map((data) => {
         userFollowers === null || userFollowers === void 0 ? void 0 : userFollowers.followers.map((details, id) => {
             if (details.username === data.user) {
                 data.post.push(new_Post);
@@ -292,7 +317,7 @@ const likeFunction = (user, postedBy, time) => {
             });
         }
         // we check everybody home post to see if a user has that same post
-        homePost.map((details) => {
+        exports.homePost.map((details) => {
             details.post.map((details) => {
                 if (details.postedBy === postedBy && details.time === time) {
                     details.likes = currentPost === null || currentPost === void 0 ? void 0 : currentPost.likes;
@@ -316,7 +341,7 @@ const unlikeFunction = (user, postedBy, time) => {
             post.likes = (_a = post.likes) === null || _a === void 0 ? void 0 : _a.filter((details) => details !== user);
             //
         }
-        homePost.map((details) => {
+        exports.homePost.map((details) => {
             details.post.map((details) => {
                 if (details.postedBy === postedBy && details.time === time) {
                     details.likes = post === null || post === void 0 ? void 0 : post.likes;
@@ -339,7 +364,7 @@ const commentFunction = (user, comment, img_url, commentTime, postedBy, time) =>
         if (post) {
             (_a = post.comment) === null || _a === void 0 ? void 0 : _a.push({ username: user, comment, img_url, time: commentTime });
         }
-        homePost.map((details) => {
+        exports.homePost.map((details) => {
             details.post.map((details) => {
                 if (details.postedBy === postedBy && details.time === time) {
                     details.comment = post === null || post === void 0 ? void 0 : post.comment;
@@ -387,7 +412,7 @@ const unblockFuction = (userLoggedIn, userToBeUnBlocked) => {
 exports.unblockFuction = unblockFuction;
 const deletePost = (time, username) => {
     const user = exports.serverDataBase.find((data) => data.username === username);
-    const findUser = homePost.find((data) => data.user === username);
+    const findUser = exports.homePost.find((data) => data.user === username);
     if (user) {
         user.post = user.post.filter((data) => data.time !== time && data.postedBy === username);
     }

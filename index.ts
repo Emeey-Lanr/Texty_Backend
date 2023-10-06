@@ -9,9 +9,12 @@ import { route } from "./UserRoute/user"
 import {messageroute} from "./UserRoute/messageRoute"
 import dotenv from "dotenv"
 import mongoose from "mongoose"
-import { deleteAccount, serverDataBase, suggestUser } from "./socketController"
+import { homePostModel } from "./homepostModel"
+import { deleteAccount, serverDataBase, suggestUser, homePost } from "./socketController"
 import {
     updateInfo,
+    createHomePostDb,
+    updateHomePost,
     addUserInfoToServerDatabase,
     addUserPostOrEmitPost,
     followUser, unfollowUser,
@@ -64,8 +67,12 @@ io.on("connection", (socket:Socket) => {
       const serverDataBase =   addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
             const homePost = addUserPostOrEmitPost(data.userinfo.username, data.userinfo.post)
            const suggestedUser = suggestUser(data.userinfo.username);
-       
-            io.sockets.to(data.userinfo.username).emit("homePost", homePost)
+            homePost.then((result) => {
+                    io.sockets.to(data.userinfo.username).emit("homePost", result)
+            
+            })
+        
+        
             io.sockets.to(data.userinfo.username).emit("profilePost", { user: serverDataBase.user, lookedForUser: serverDataBase.userLookedFor })
             io.sockets.to(data.userinfo.username).emit("suggestedUser", {suggestedUser});
         }
@@ -168,7 +175,7 @@ io.on("connection", (socket:Socket) => {
             io.sockets.to(`${details.username}`).emit("newPostForFollowers", {newPost:post})
         })
         }
-      
+      updateHomePost()
        
         
          
@@ -216,13 +223,16 @@ io.on("connection", (socket:Socket) => {
                     io.sockets.to(`${details.username}`).emit(socketName2, {likes:detailsBox, postedBy:postedBy, time:time, notified:false, available})  
                 })
                 
-            }
         }
         
-     socket.on("like", (data) => {
+        }
+        
+    socket.on("like", async (data) => {
+         
         
             likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
            
+         updateHomePost()
             
         })
    
@@ -230,6 +240,7 @@ io.on("connection", (socket:Socket) => {
        
          likeUnlikeCommentFunction(data.user,"", "", "",  data.postedBy,  data.time, data.state, "likeOrUnlike1", "likeOrUnlike2")
         // likeGeneralFunction(data.user, data.)
+        updateHomePost()
     })
     socket.on("comment", (data) => {
       
@@ -252,6 +263,7 @@ io.on("connection", (socket:Socket) => {
                     io.sockets.to(`${details.username}`).emit("Comment2", {comment:comment.comment, postedBy:data.postedBy, time:data.time, notified:false, available:comment.available})  
                 })
         }
+        updateHomePost()
         //  likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
         
     })
@@ -281,12 +293,13 @@ io.on("connection", (socket:Socket) => {
     socket.on("deletePost",  (data) => {
        
         const postDeletedFunction = deletePost(data.time, data.username)
-
+      
         io.sockets.to(data.username).emit("postDeleted", {time:data.time, homePost:postDeletedFunction.userhomePost, profilePost:postDeletedFunction.userProfilePost, username:postDeletedFunction.username})
+     updateHomePost()   
     })
     
     socket.on("deleteAccount", (data) => {
-        console.log(data)
+  
         deleteAccount(data.username)
     })
     
@@ -305,6 +318,7 @@ httpServer.listen(PORT, async () => {
     try {
         const updateInfoFunction = await updateInfo()
         const connect = await mongoose.connect(`${process.env.URI}`)
+        const homePost =await createHomePostDb()
         console.log(`server has started @ port ${PORT}`);
     } catch (error:any) {
         console.log(`${error.message}`)

@@ -45,7 +45,9 @@ exports.io.on("connection", (socket) => {
             const serverDataBase = (0, socketController_2.addUserInfoToServerDatabase)(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage);
             const homePost = (0, socketController_2.addUserPostOrEmitPost)(data.userinfo.username, data.userinfo.post);
             const suggestedUser = (0, socketController_1.suggestUser)(data.userinfo.username);
-            exports.io.sockets.to(data.userinfo.username).emit("homePost", homePost);
+            homePost.then((result) => {
+                exports.io.sockets.to(data.userinfo.username).emit("homePost", result);
+            });
             exports.io.sockets.to(data.userinfo.username).emit("profilePost", { user: serverDataBase.user, lookedForUser: serverDataBase.userLookedFor });
             exports.io.sockets.to(data.userinfo.username).emit("suggestedUser", { suggestedUser });
         }
@@ -119,6 +121,7 @@ exports.io.on("connection", (socket) => {
                 exports.io.sockets.to(`${details.username}`).emit("newPostForFollowers", { newPost: post });
             });
         }
+        (0, socketController_2.updateHomePost)();
     });
     const likeUnlikeCommentFunction = (user, comment, img_url, commentTime, postedBy, time, state, socketName1, socketName2) => {
         let detailsBox = [];
@@ -157,12 +160,14 @@ exports.io.on("connection", (socket) => {
             });
         }
     };
-    socket.on("like", (data) => {
+    socket.on("like", (data) => __awaiter(void 0, void 0, void 0, function* () {
         likeUnlikeCommentFunction(data.user, "", "", "", data.postedBy, data.time, data.state, "likeOrUnlike1", "likeOrUnlike2");
-    });
+        (0, socketController_2.updateHomePost)();
+    }));
     socket.on("unlike", (data) => {
         likeUnlikeCommentFunction(data.user, "", "", "", data.postedBy, data.time, data.state, "likeOrUnlike1", "likeOrUnlike2");
         // likeGeneralFunction(data.user, data.)
+        (0, socketController_2.updateHomePost)();
     });
     socket.on("comment", (data) => {
         const comment = (0, socketController_2.commentFunction)(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time);
@@ -183,6 +188,7 @@ exports.io.on("connection", (socket) => {
                 exports.io.sockets.to(`${details.username}`).emit("Comment2", { comment: comment.comment, postedBy: data.postedBy, time: data.time, notified: false, available: comment.available });
             });
         }
+        (0, socketController_2.updateHomePost)();
         //  likeUnlikeCommentFunction(data.user, data.comment, data.imgUrl, data.commentTime, data.postedBy, data.time, data.state, "comment1", "Comment2")
     });
     socket.on("blockUser", (data) => {
@@ -205,9 +211,9 @@ exports.io.on("connection", (socket) => {
     socket.on("deletePost", (data) => {
         const postDeletedFunction = (0, socketController_2.deletePost)(data.time, data.username);
         exports.io.sockets.to(data.username).emit("postDeleted", { time: data.time, homePost: postDeletedFunction.userhomePost, profilePost: postDeletedFunction.userProfilePost, username: postDeletedFunction.username });
+        (0, socketController_2.updateHomePost)();
     });
     socket.on("deleteAccount", (data) => {
-        console.log(data);
         (0, socketController_1.deleteAccount)(data.username);
     });
     socket.on("disconnect", () => {
@@ -217,6 +223,7 @@ httpServer.listen(PORT, () => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const updateInfoFunction = yield (0, socketController_2.updateInfo)();
         const connect = yield mongoose_1.default.connect(`${process.env.URI}`);
+        const homePost = yield (0, socketController_2.createHomePostDb)();
         console.log(`server has started @ port ${PORT}`);
     }
     catch (error) {

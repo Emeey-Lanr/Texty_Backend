@@ -306,14 +306,16 @@ const likeUnlikePost = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 allPost[currentPostId].likes.push(user);
             }
         }
-        else {
+        else if (state === "unlike") {
             allPost[currentPostId].likes = allPost[currentPostId].likes.filter((data) => data !== user);
+        }
+        else if (state === "comment") {
+            allPost[currentPostId].comment.push({ username: user, comment: req.body.comment, img_url: req.body.imgUrl, time: req.body.commentTime });
         }
         const update = yield db_1.pool.query("UPDATE user_info SET post = $1 WHERE username = $2", [JSON.stringify(allPost), postedBy]);
     }
     catch (error) {
         res.status(400).json({ message: "an error occured", status: false });
-        // console.log(error.message)
     }
 });
 exports.likeUnlikePost = likeUnlikePost;

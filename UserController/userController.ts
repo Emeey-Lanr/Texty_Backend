@@ -7,6 +7,7 @@ import brcypt from "bcrypt"
 const jwt = require("jsonwebtoken")
 
 import { v2 as cloudinary } from "cloudinary";
+import { stat } from "fs";
 
 
 cloudinary.config({
@@ -417,26 +418,21 @@ export const likeUnlikePost = async (req: Request, res: Response) => {
             if (!allPost[currentPostId].likes.some((data: string) => data === user)) {
              allPost[currentPostId].likes.push(user)  
            } 
-        } else {
+        } else if (state === "unlike") {
           allPost[currentPostId].likes = allPost[currentPostId].likes.filter((data:string)=>data !== user)
+        } else if (state === "comment") {
+            allPost[currentPostId].comment.push({ username: user,  comment:req.body.comment, img_url:req.body.imgUrl, time: req.body.commentTime})
         }
          
      const update = await pool.query("UPDATE user_info SET post = $1 WHERE username = $2", [JSON.stringify(allPost), postedBy])
     } catch (error: any) {
             res.status(400).json({message:"an error occured", status:false})
-        // console.log(error.message)
+      
     }
     
 }
 
 
-export const comment = async (req: Request, res: Response) => {
-    try {
-        
-    } catch (error) {
-        
-    }
-}
 
 export const deletePost = async (req: Request, res: Response) => {
     const {time, username} = req.body
