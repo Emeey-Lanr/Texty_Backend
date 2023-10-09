@@ -226,12 +226,14 @@ export const followUser = (userLoggedIn:string, userLookedFor:string, notificati
     about_me: findTheLookedForUser?.about_me,
     }
     // This prevents double pushing, It checks if user already exist in  user following if it does it doesn't push
-    const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser?.following.find((details) => details.username === userLookedFor)
-    if (!checkIfUserAlreadyExistForUserLoggedIn) {
+    // const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser?.following.find((details) => details.username === userLookedFor)
+// later used some instead
+    if (!findLoggedInUser?.following.some((details)=>details.username === userLookedFor)) {
        findTheLookedForUser && findLoggedInUser ?   findLoggedInUser?.following.push(lookedForUserDetails) : ""
     }
-    const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser?.followers.find((details) => details.username === userLoggedIn)
-    if (!checkIfUserExistInLookedForUserFollowers) {
+    // const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser?.followers.find((details) => details.username === userLoggedIn)
+   
+    if (!findTheLookedForUser?.followers.some((details) => details.username === userLoggedIn)) {
       findTheLookedForUser && findLoggedInUser ?   findTheLookedForUser?.followers.push(loggedInUserDetails) : ""
     }
   
@@ -357,10 +359,7 @@ export const addAndEmitPost = (username: string, userPost: POST) => {
       
     }) 
 
-
-    
-
-    return {followers:userFollowers?.followers, userHomePost:findUserHomePost, userPost:userFollowers?.post, post:new_Post}
+   return {followers:userFollowers?.followers, userHomePost:findUserHomePost, userPost:userFollowers?.post, post:new_Post}
     
 }
 

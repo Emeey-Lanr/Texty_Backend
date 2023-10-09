@@ -68,7 +68,7 @@ io.on("connection", (socket:Socket) => {
             const homePost = addUserPostOrEmitPost(data.userinfo.username, data.userinfo.post)
            const suggestedUser = suggestUser(data.userinfo.username);
             homePost.then((result) => {
-                    io.sockets.to(data.userinfo.username).emit("homePost", result)
+                    io.sockets.to(data.userinfo.username).emit("homePost", result.post)
             
             })
         

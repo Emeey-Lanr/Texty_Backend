@@ -46,7 +46,7 @@ exports.io.on("connection", (socket) => {
             const homePost = (0, socketController_2.addUserPostOrEmitPost)(data.userinfo.username, data.userinfo.post);
             const suggestedUser = (0, socketController_1.suggestUser)(data.userinfo.username);
             homePost.then((result) => {
-                exports.io.sockets.to(data.userinfo.username).emit("homePost", result);
+                exports.io.sockets.to(data.userinfo.username).emit("homePost", result.post);
             });
             exports.io.sockets.to(data.userinfo.username).emit("profilePost", { user: serverDataBase.user, lookedForUser: serverDataBase.userLookedFor });
             exports.io.sockets.to(data.userinfo.username).emit("suggestedUser", { suggestedUser });

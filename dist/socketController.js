@@ -193,12 +193,13 @@ const followUser = (userLoggedIn, userLookedFor, notificationWords) => {
         about_me: findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.about_me,
     };
     // This prevents double pushing, It checks if user already exist in  user following if it does it doesn't push
-    const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.find((details) => details.username === userLookedFor);
-    if (!checkIfUserAlreadyExistForUserLoggedIn) {
+    // const checkIfUserAlreadyExistForUserLoggedIn = findLoggedInUser?.following.find((details) => details.username === userLookedFor)
+    // later used some instead
+    if (!(findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.some((details) => details.username === userLookedFor))) {
         findTheLookedForUser && findLoggedInUser ? findLoggedInUser === null || findLoggedInUser === void 0 ? void 0 : findLoggedInUser.following.push(lookedForUserDetails) : "";
     }
-    const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.find((details) => details.username === userLoggedIn);
-    if (!checkIfUserExistInLookedForUserFollowers) {
+    // const checkIfUserExistInLookedForUserFollowers = findTheLookedForUser?.followers.find((details) => details.username === userLoggedIn)
+    if (!(findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.some((details) => details.username === userLoggedIn))) {
         findTheLookedForUser && findLoggedInUser ? findTheLookedForUser === null || findTheLookedForUser === void 0 ? void 0 : findTheLookedForUser.followers.push(loggedInUserDetails) : "";
     }
     // followed means this type on notification is a type where user gets to know they've been followed and can follow back via the notification
