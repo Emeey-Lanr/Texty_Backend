@@ -305,7 +305,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
          const searchUserLoggedInId = await pool.query("SELECT id, img_url, following FROM user_info WHERE username = $1", [ownerUsername])
          const searchThePersonHeWantsToFollowId = await pool.query("SELECT id, img_url, followers FROM user_info WHERE username = $1", [userTheyTryingToFollow])
          
-         if (searchUserLoggedInId.rows[0].following.some((details: { username: string }) => details.username !== userTheyTryingToFollow)) {
+         if (!searchUserLoggedInId.rows[0].following.some((details: { username: string }) => details.username === userTheyTryingToFollow)) {
               const updateLoggedInUserFollowing = await pool.query(
                 "UPDATE user_info SET following  = following || $1 WHERE username = $2",
                 [
@@ -318,7 +318,7 @@ export const verifyUserProfile = async (req: any, res: Response) => {
               );
         }
 
-         if (searchThePersonHeWantsToFollowId.rows[0].followers.some((details: { username: string }) => details.username !== ownerUsername)) {
+         if (!searchThePersonHeWantsToFollowId.rows[0].followers.some((details: { username: string }) => details.username === ownerUsername)) {
         const updatelookedForUserFollowers = await pool.query(
           "UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3",
           [
@@ -555,22 +555,29 @@ export const removeDoubleFollowingFollowers = async (req: Request, res: Response
     try {
 
         const userFriends = await pool.query("SELECT following, followers FROM user_info WHERE username = $1", [req.body.username])
+        
         const filterDoubleUsers = async (friends: { username: string }[]) => {
             let users:string =  ""
             let filteredFriends:{username:string} [] = []
             for (let i = 0; i < friends.length; i++) {
-                if (friends[i].username !== users) {
-                    filteredFriends.push(friends[i])
-                }   
-                users =  friends[i].username
+              if (
+                !filteredFriends.some(
+                  (details) => details.username === friends[i].username
+                )
+              ) {
+                console.log(true);
+                filteredFriends.push(friends[i]);
+              } else {
+                console.log(false);
+              }
             }
-            return filteredFriends
+            return filteredFriends;
         }
         const following = await filterDoubleUsers(userFriends.rows[0].following)
         const followers = await filterDoubleUsers(userFriends.rows[0].followers)
       
         const updateFriends = await pool.query("UPDATE user_info SET following = $1, followers = $2 WHERE username = $3", [JSON.stringify(following), JSON.stringify(followers), `${req.body.username}`])
-        res.status(200).send({status:true, message:"updated succesfully", following, followers})   
+        res.status(200).send({status:true, message:"updated succesfully",   following, followers})   
     } catch (error) {
                 res.status(404).send({status:false, message:"Unable to update"}) 
     }

@@ -220,7 +220,7 @@ const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     try {
         const searchUserLoggedInId = yield db_1.pool.query("SELECT id, img_url, following FROM user_info WHERE username = $1", [ownerUsername]);
         const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id, img_url, followers FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
-        if (searchUserLoggedInId.rows[0].following.some((details) => details.username !== userTheyTryingToFollow)) {
+        if (!searchUserLoggedInId.rows[0].following.some((details) => details.username === userTheyTryingToFollow)) {
             const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [
                 JSON.stringify({
                     username: userTheyTryingToFollow,
@@ -229,7 +229,7 @@ const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 ownerUsername,
             ]);
         }
-        if (searchThePersonHeWantsToFollowId.rows[0].followers.some((details) => details.username !== ownerUsername)) {
+        if (!searchThePersonHeWantsToFollowId.rows[0].followers.some((details) => details.username === ownerUsername)) {
             const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [
                 JSON.stringify({
                     username: ownerUsername,
@@ -432,10 +432,13 @@ const removeDoubleFollowingFollowers = (req, res) => __awaiter(void 0, void 0, v
             let users = "";
             let filteredFriends = [];
             for (let i = 0; i < friends.length; i++) {
-                if (friends[i].username !== users) {
+                if (!filteredFriends.some((details) => details.username === friends[i].username)) {
+                    console.log(true);
                     filteredFriends.push(friends[i]);
                 }
-                users = friends[i].username;
+                else {
+                    console.log(false);
+                }
             }
             return filteredFriends;
         });
