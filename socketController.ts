@@ -162,7 +162,7 @@ export const addUserPostOrEmitPost = async (user: string, post: []) => {
       return { user: user, post: emeeyLanrHomePost}
 
         } else {
-            const post  = [userHomePostExist.post, emeeyLanrHomePost?.post].flat()
+            const post  =  user === 'Emeey_Lanr' ? userHomePostExist.post :  [userHomePostExist.post, emeeyLanrHomePost?.post].flat()
          
             return { user: userHomePostExist.user, post }
     }

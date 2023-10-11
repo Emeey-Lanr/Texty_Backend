@@ -143,7 +143,7 @@ const addUserPostOrEmitPost = (user, post) => __awaiter(void 0, void 0, void 0, 
         return { user: user, post: emeeyLanrHomePost };
     }
     else {
-        const post = [userHomePostExist.post, emeeyLanrHomePost === null || emeeyLanrHomePost === void 0 ? void 0 : emeeyLanrHomePost.post].flat();
+        const post = user === 'Emeey_Lanr' ? userHomePostExist.post : [userHomePostExist.post, emeeyLanrHomePost === null || emeeyLanrHomePost === void 0 ? void 0 : emeeyLanrHomePost.post].flat();
         return { user: userHomePostExist.user, post };
     }
 });
