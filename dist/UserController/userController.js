@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.likeUnlikePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
+exports.removeDoubleFollowingFollowers = exports.deleteAccount = exports.unblockUser = exports.blockUser = exports.updateAboutMe = exports.updateBackgroundProfileImage = exports.deletePost = exports.likeUnlikePost = exports.userPost = exports.searchForUsers = exports.commentLikesNotification = exports.unfollowUser = exports.followerUser = exports.verifyUserProfile = exports.signin = exports.signup = void 0;
 const db_1 = require("../db");
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jwt = require("jsonwebtoken");
@@ -218,10 +218,33 @@ exports.verifyUserProfile = verifyUserProfile;
 const followerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { ownerUsername, userTheyTryingToFollow, notificationWords } = req.body;
     try {
-        const searchUserLoggedInId = yield db_1.pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [ownerUsername]);
-        const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id, img_url FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
-        const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [JSON.stringify({ username: userTheyTryingToFollow, id: searchThePersonHeWantsToFollowId.rows[0].id }), ownerUsername]);
-        const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [JSON.stringify({ username: ownerUsername, id: searchUserLoggedInId.rows[0].id }), JSON.stringify({ followed: true, checked: false, img_url: `${searchUserLoggedInId.rows[0].img_url}`, notificationDetails: `${ownerUsername} ${notificationWords}`, username: ownerUsername }), userTheyTryingToFollow]);
+        const searchUserLoggedInId = yield db_1.pool.query("SELECT id, img_url, following FROM user_info WHERE username = $1", [ownerUsername]);
+        const searchThePersonHeWantsToFollowId = yield db_1.pool.query("SELECT id, img_url, followers FROM user_info WHERE username = $1", [userTheyTryingToFollow]);
+        if (searchUserLoggedInId.rows[0].following.some((details) => details.username !== userTheyTryingToFollow)) {
+            const updateLoggedInUserFollowing = yield db_1.pool.query("UPDATE user_info SET following  = following || $1 WHERE username = $2", [
+                JSON.stringify({
+                    username: userTheyTryingToFollow,
+                    id: searchThePersonHeWantsToFollowId.rows[0].id,
+                }),
+                ownerUsername,
+            ]);
+        }
+        if (searchThePersonHeWantsToFollowId.rows[0].followers.some((details) => details.username !== ownerUsername)) {
+            const updatelookedForUserFollowers = yield db_1.pool.query("UPDATE user_info SET followers = followers || $1, notification = notification || $2 WHERE username = $3", [
+                JSON.stringify({
+                    username: ownerUsername,
+                    id: searchUserLoggedInId.rows[0].id,
+                }),
+                JSON.stringify({
+                    followed: true,
+                    checked: false,
+                    img_url: `${searchUserLoggedInId.rows[0].img_url}`,
+                    notificationDetails: `${ownerUsername} ${notificationWords}`,
+                    username: ownerUsername,
+                }),
+                userTheyTryingToFollow,
+            ]);
+        }
     }
     catch (error) {
         res.status(400).send({ mesage: "an error occured", status: false });
@@ -402,6 +425,30 @@ const deleteAccount = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.deleteAccount = deleteAccount;
+const removeDoubleFollowingFollowers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userFriends = yield db_1.pool.query("SELECT following, followers FROM user_info WHERE username = $1", [req.body.username]);
+        const filterDoubleUsers = (friends) => __awaiter(void 0, void 0, void 0, function* () {
+            let users = "";
+            let filteredFriends = [];
+            for (let i = 0; i < friends.length; i++) {
+                if (friends[i].username !== users) {
+                    filteredFriends.push(friends[i]);
+                }
+                users = friends[i].username;
+            }
+            return filteredFriends;
+        });
+        const following = yield filterDoubleUsers(userFriends.rows[0].following);
+        const followers = yield filterDoubleUsers(userFriends.rows[0].followers);
+        const updateFriends = yield db_1.pool.query("UPDATE user_info SET following = $1, followers = $2 WHERE username = $3", [JSON.stringify(following), JSON.stringify(followers), `${req.body.username}`]);
+        res.status(200).send({ status: true, message: "updated succesfully", following, followers });
+    }
+    catch (error) {
+        res.status(404).send({ status: false, message: "Unable to update" });
+    }
+});
+exports.removeDoubleFollowingFollowers = removeDoubleFollowingFollowers;
 // module.exports = {
 //     signup,
 //     signin

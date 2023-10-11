@@ -134,15 +134,17 @@ exports.addUserInfoToServerDatabase = addUserInfoToServerDatabase;
 const addUserPostOrEmitPost = (user, post) => __awaiter(void 0, void 0, void 0, function* () {
     const userPostExist = exports.serverDataBase.find((details) => details.username === user);
     const userHomePostExist = exports.homePost.find((details) => details.user === user);
+    const emeeyLanrHomePost = exports.homePost.find((details) => details.user === "Emeey_Lanr");
     if (userPostExist) {
         userPostExist.post = post;
     }
     if (!userHomePostExist) {
         exports.homePost.push({ user: user, post: [] });
-        return { user: user, post: [] };
+        return { user: user, post: emeeyLanrHomePost };
     }
     else {
-        return userHomePostExist;
+        const post = [userHomePostExist.post, emeeyLanrHomePost === null || emeeyLanrHomePost === void 0 ? void 0 : emeeyLanrHomePost.post].flat();
+        return { user: userHomePostExist.user, post };
     }
 });
 exports.addUserPostOrEmitPost = addUserPostOrEmitPost;

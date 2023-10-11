@@ -146,7 +146,10 @@ export const addUserInfoToServerDatabase = (userLoggedInUsername: string, userLo
 export const addUserPostOrEmitPost = async (user: string, post: []) => {
 
           const userPostExist = serverDataBase.find((details) => details.username === user)
-        const userHomePostExist = homePost.find((details) => details.user === user)
+    const userHomePostExist = homePost.find((details) => details.user === user)
+    const emeeyLanrHomePost = homePost.find((details) => details.user === "Emeey_Lanr")
+
+
 
     if (userPostExist) {
       userPostExist.post = post  
@@ -156,11 +159,12 @@ export const addUserPostOrEmitPost = async (user: string, post: []) => {
      
         homePost.push({ user: user, post: [] })
       
-      return { user: user, post: [] }
+      return { user: user, post: emeeyLanrHomePost}
 
-    } else {
-    
-        return userHomePostExist
+        } else {
+            const post  = [userHomePostExist.post, emeeyLanrHomePost?.post].flat()
+         
+            return { user: userHomePostExist.user, post }
     }
    
   

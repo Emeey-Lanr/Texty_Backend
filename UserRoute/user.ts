@@ -16,7 +16,8 @@ import {
     updateAboutMe,
     blockUser,
     unblockUser,
-    deleteAccount
+    deleteAccount,
+    removeDoubleFollowingFollowers
     
 } from "../UserController/userController"
 
@@ -36,6 +37,10 @@ route.put("/blockUser", blockUser)
 route.put("/unBlockUser", unblockUser)
 route.put("/deleteAccount", deleteAccount)
 route.put("/deletePost", deletePost)
+
+// double following and followers
+route.put("/doubleFollowingXFollowers", removeDoubleFollowingFollowers)
+
 
 
 

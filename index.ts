@@ -66,10 +66,11 @@ io.on("connection", (socket:Socket) => {
             socket.join(data.userinfo.username)
       const serverDataBase =   addUserInfoToServerDatabase(data.userinfo.username, data.userLookedFor.username, data.userinfo, data.userLookedFor, data.usermessage)
             const homePost = addUserPostOrEmitPost(data.userinfo.username, data.userinfo.post)
-           const suggestedUser = suggestUser(data.userinfo.username);
+            const suggestedUser = suggestUser(data.userinfo.username);
+            
             homePost.then((result) => {
                     io.sockets.to(data.userinfo.username).emit("homePost", result.post)
-            
+
             })
         
         

@@ -22,4 +22,6 @@ exports.route.put("/blockUser", userController_1.blockUser);
 exports.route.put("/unBlockUser", userController_1.unblockUser);
 exports.route.put("/deleteAccount", userController_1.deleteAccount);
 exports.route.put("/deletePost", userController_1.deletePost);
+// double following and followers
+exports.route.put("/doubleFollowingXFollowers", userController_1.removeDoubleFollowingFollowers);
 // export route
